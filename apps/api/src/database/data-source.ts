@@ -3,8 +3,8 @@ import * as path from 'path';
 
 const isProduction = process.env.NODE_ENV === 'production';
 const entitiesPath = isProduction
-  ? path.join(__dirname, '**', '*.entity.js')
-  : path.join(__dirname, '**', '*.entity.ts');
+  ? path.join(__dirname, '..', '**', '*.entity.js')
+  : path.join(__dirname, '..', '**', '*.entity.ts');
 const migrationsPath = isProduction
   ? path.join(__dirname, 'migrations', '*.js')
   : path.join(__dirname, 'migrations', '*.ts');

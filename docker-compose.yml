@@ -11,11 +11,6 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./database/001_initial_schema.sql:/docker-entrypoint-initdb.d/001_initial_schema.sql
-      - ./database/002_seed_reference_data.sql:/docker-entrypoint-initdb.d/002_seed_reference_data.sql
-      - ./database/003_integrity_triggers.sql:/docker-entrypoint-initdb.d/003_integrity_triggers.sql
-      - ./database/004_partials.sql:/docker-entrypoint-initdb.d/004_partials.sql
-      - ./database/005_google_sheets.sql:/docker-entrypoint-initdb.d/005_google_sheets.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U aula_user -d aula_docente"]
       interval: 10s
