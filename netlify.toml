@@ -1,6 +1,6 @@
 [build]
   base = "."
-  publish = "apps/docente-app/dist/spa"
+  publish = "apps/docente-app/dist/pwa"
   command = "pnpm install --frozen-lockfile && pnpm build:frontend"
 
 [build.environment]

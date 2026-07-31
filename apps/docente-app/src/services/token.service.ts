@@ -1,4 +1,4 @@
-let accessToken: string | null = null;
+const TOKEN_KEY = 'aula_access_token';
 
 function base64UrlDecode(input: string): string {
   const base64 = input.replace(/-/g, '+').replace(/_/g, '/');
@@ -44,17 +44,18 @@ export function willExpireSoon(token: string, thresholdMs = 60_000): boolean {
 }
 
 export function getAccessToken(): string | null {
-  return accessToken;
+  return localStorage.getItem(TOKEN_KEY);
 }
 
 export function setAccessToken(token: string): void {
-  accessToken = token;
+  localStorage.setItem(TOKEN_KEY, token);
 }
 
 export function clearAccessToken(): void {
-  accessToken = null;
+  localStorage.removeItem(TOKEN_KEY);
 }
 
 export function hasAccessToken(): boolean {
-  return accessToken !== null && !isTokenExpired(accessToken);
+  const token = getAccessToken();
+  return token !== null && !isTokenExpired(token);
 }
