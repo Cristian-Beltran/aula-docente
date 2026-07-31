@@ -1,0 +1,135 @@
+:root {
+  --app-page-max: 640px;
+}
+
+body {
+  background: #f7f3ec;
+  -webkit-font-smoothing: antialiased;
+}
+
+.app-shell {
+  max-width: var(--app-page-max);
+  margin: 0 auto;
+  padding: 0 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.app-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.app-page-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 2px;
+}
+
+.app-page-title {
+  margin: 0;
+  font-size: 1.18rem;
+  font-weight: 800;
+  color: #16324f;
+}
+
+.app-page-subtitle {
+  margin: 4px 0 0;
+  color: #6d7b8c;
+  font-size: 0.8rem;
+}
+
+.app-surface {
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 8px 20px rgba(16, 45, 78, 0.04);
+}
+
+.app-list-card {
+  padding: 14px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 8px 20px rgba(16, 45, 78, 0.04);
+}
+
+.app-list-card__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.app-list-card__title {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: #16324f;
+}
+
+.app-list-card__meta {
+  margin: 4px 0 0;
+  color: #6d7b8c;
+  font-size: 0.8rem;
+}
+
+.app-empty {
+  padding: 32px 18px;
+  text-align: center;
+  color: #6d7b8c;
+}
+
+.app-empty__icon { margin-bottom: 8px; }
+
+.app-search {
+  border-radius: 14px;
+}
+
+.app-compact-btn {
+  min-height: 42px;
+  padding: 0 16px;
+  border-radius: 14px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.app-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: rgba(16, 45, 78, 0.06);
+  color: #526173;
+}
+
+.app-chip--positive { background: rgba(102, 187, 106, 0.12); color: #2e7d32; }
+.app-chip--warning { background: rgba(255, 167, 38, 0.12); color: #9f6700; }
+.app-chip--danger { background: rgba(239, 83, 80, 0.12); color: #c62828; }
+
+.app-bottom-safe { padding-bottom: 100px; }
+
+@media (max-width: 767px) {
+  .app-shell {
+    padding: 0 18px;
+  }
+
+  .app-page-subtitle {
+    display: none;
+  }
+}
+
+@media (min-width: 768px) {
+  .app-shell {
+    max-width: 880px;
+    padding: 0 24px;
+  }
+
+  .app-bottom-safe { padding-bottom: 32px; }
+}

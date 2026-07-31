@@ -1,0 +1,24 @@
+{
+  "name": "aula-docente",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev:frontend": "pnpm --filter docente-app dev",
+    "dev:backend": "pnpm --filter api start:dev",
+    "dev": "pnpm --parallel dev",
+    "build:frontend": "pnpm --filter docente-app build",
+    "build:backend": "pnpm --filter api build",
+    "build": "pnpm --recursive build",
+    "lint": "pnpm --recursive lint",
+    "test": "pnpm --recursive test",
+    "migration:generate": "pnpm --filter api migration:generate",
+    "migration:run": "pnpm --filter api migration:run",
+    "migration:revert": "pnpm --filter api migration:revert",
+    "db:up": "docker compose up -d postgres",
+    "db:down": "docker compose down",
+    "db:migrate:generate": "pnpm --filter api typeorm migration:generate",
+    "db:migrate:run": "pnpm --filter api typeorm migration:run",
+    "db:migrate:revert": "pnpm --filter api typeorm migration:revert",
+    "db:seed:admin": "pnpm --filter api seed:admin"
+  }
+}

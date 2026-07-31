@@ -1,0 +1,76 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: aula-docente-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: aula_docente
+      POSTGRES_USER: aula_user
+      POSTGRES_PASSWORD: aula_secret
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/001_initial_schema.sql:/docker-entrypoint-initdb.d/001_initial_schema.sql
+      - ./database/002_seed_reference_data.sql:/docker-entrypoint-initdb.d/002_seed_reference_data.sql
+      - ./database/003_integrity_triggers.sql:/docker-entrypoint-initdb.d/003_integrity_triggers.sql
+      - ./database/004_partials.sql:/docker-entrypoint-initdb.d/004_partials.sql
+      - ./database/005_google_sheets.sql:/docker-entrypoint-initdb.d/005_google_sheets.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aula_user -d aula_docente"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  adminer:
+    image: adminer:latest
+    container_name: aula-docente-adminer
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: aula-docente-api
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_NAME: aula_docente
+      DATABASE_USER: aula_user
+      DATABASE_PASSWORD: aula_secret
+      JWT_SECRET: change_me_in_production
+      JWT_EXPIRES_IN: 15m
+      JWT_REFRESH_SECRET: change_me_in_production
+      JWT_REFRESH_EXPIRES_IN: 7d
+      JWT_SESSION_EXPIRES_IN: 1d
+      AUTH_REFRESH_COOKIE_NAME: aula_refresh_token
+      AUTH_COOKIE_SAME_SITE: lax
+      AUTH_COOKIE_SECURE: false
+      ADMIN_SEED_EMAIL: admin@example.edu
+      ADMIN_SEED_PASSWORD: ChangeMe123!
+      ADMIN_SEED_FULL_NAME: Administrador Aula Docente
+      ADMIN_SEED_ROLE: ADMIN
+      R2_ACCOUNT_ID: ${R2_ACCOUNT_ID}
+      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID}
+      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY}
+      R2_BUCKET_NAME: aula-docente
+      R2_PUBLIC_URL: ${R2_PUBLIC_URL}
+      PORT: 3000
+      NODE_ENV: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./apps/api/.env:/app/apps/api/.env:ro
+
+volumes:
+  postgres_data:

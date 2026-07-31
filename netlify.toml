@@ -1,0 +1,23 @@
+[build]
+  base = "."
+  publish = "apps/docente-app/dist/spa"
+  command = "pnpm install --frozen-lockfile && pnpm build:frontend"
+
+[build.environment]
+  NODE_VERSION = "20"
+  PNPM_VERSION = "9"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/manifest.json"
+  [headers.values]
+    Content-Type = "application/manifest+json"
+
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"
