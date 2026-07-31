@@ -1,6 +1,6 @@
 import { boot } from 'quasar/wrappers';
 import axios, { AxiosInstance } from 'axios';
-import { getAccessToken, setAccessToken, clearAccessToken } from 'src/services/token.service';
+import { getAccessToken, setAccessToken, clearAccessToken, isTokenExpired, hasAccessToken } from 'src/services/token.service';
 
 declare module 'vue' {
   interface ComponentCustomProperties {
@@ -34,7 +34,7 @@ function processQueue(error: unknown = null) {
 
 api.interceptors.request.use((config) => {
   const token = getAccessToken();
-  if (token) {
+  if (token && !isTokenExpired(token)) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
@@ -84,9 +84,33 @@ api.interceptors.response.use(
   },
 );
 
-export default boot(({ app }) => {
+let expireCheckInterval: ReturnType<typeof setInterval> | null = null;
+
+function redirectToLogin() {
+  clearAccessToken();
+  window.location.href = '/#/login?session=expired';
+}
+
+export default boot(({ app, router }) => {
   app.config.globalProperties.$axios = axios;
   app.config.globalProperties.$api = api;
+
+  if (expireCheckInterval) {
+    clearInterval(expireCheckInterval);
+  }
+
+  expireCheckInterval = setInterval(() => {
+    const token = getAccessToken();
+    if (token && isTokenExpired(token)) {
+      redirectToLogin();
+    } else if (!token) {
+      const currentRoute = router.currentRoute.value;
+      const requiresAuth = currentRoute.matched.some((r) => r.meta.requiresAuth);
+      if (requiresAuth) {
+        redirectToLogin();
+      }
+    }
+  }, 30_000);
 });
 
 export { api };

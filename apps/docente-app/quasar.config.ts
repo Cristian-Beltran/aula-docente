@@ -56,6 +56,35 @@ export default defineConfig((ctx) => {
       swFilename: 'sw.js',
       manifestFilename: 'manifest.json',
       useCredentialsForManifestTag: true,
+      manifest: {
+        name: 'Aula Docente',
+        short_name: 'Aula Docente',
+        description: 'Gestión de cursos, asistencia y firmas',
+        display: 'standalone',
+        orientation: 'portrait',
+        background_color: '#ffffff',
+        theme_color: '#1976D2',
+        start_url: '.',
+        scope: '/',
+        icons: [
+          {
+            src: 'icons/favicon-192x192.png',
+            sizes: '192x192',
+            type: 'image/png',
+          },
+          {
+            src: 'icons/favicon-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
+          },
+          {
+            src: 'icons/favicon-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable',
+          },
+        ],
+      },
     },
     capacitor: {
       hideSplashscreen: true,
