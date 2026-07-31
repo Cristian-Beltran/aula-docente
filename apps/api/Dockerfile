@@ -12,22 +12,19 @@ RUN pnpm install --frozen-lockfile
 
 COPY apps/api/src ./apps/api/src
 
-WORKDIR /app/apps/api
-RUN pnpm build
+RUN pnpm --filter api build
 
 FROM node:20-alpine AS production
 
 WORKDIR /app
-
-RUN apk add --no-cache python3 make g++
-RUN npm install -g pnpm@9
 
 ENV NODE_ENV=production
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/api/package.json ./apps/api/
 
-RUN pnpm install --frozen-lockfile --prod
+RUN npm install -g pnpm@9 && \
+    pnpm install --frozen-lockfile --prod --filter api
 
 COPY --from=builder /app/apps/api/dist ./dist
 
