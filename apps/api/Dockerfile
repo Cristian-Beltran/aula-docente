@@ -29,12 +29,10 @@ COPY apps/api/package.json ./apps/api/
 
 RUN pnpm install --frozen-lockfile --prod
 
-COPY --from=builder /app/apps/api/dist ./apps/api/dist
+COPY --from=builder /app/apps/api/dist ./dist
 
-COPY apps/api/entrypoint.sh ./apps/api/
-RUN chmod +x ./apps/api/entrypoint.sh
-
-WORKDIR /app/apps/api
+COPY apps/api/entrypoint.sh ./entrypoint.sh
+RUN chmod +x ./entrypoint.sh
 
 EXPOSE 3000
 

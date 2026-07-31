@@ -119,11 +119,12 @@ Ve a tu panel de CapRover: `https://captain.tu-servidor.com`
 ### 3.5 Configurar el deploy de la API
 
 1. Ve a la app `aula-docente-api` → "Deployment"
-2. Selecciona "Deploy from Dockerfile"
+2. Selecciona "Deploy from captain-definition"
 3. Configura:
-   - **Dockerfile Path**: `apps/api/Dockerfile`
-   - **Repo**: `https://github.com/TU-USUARIO/aula-docente.git`
+   - **Repo**: `TU-USUARIO/aula-docente` (sin https:// ni .git)
    - **Branch**: `main`
+   - **Username**: Tu usuario de GitHub
+   - **Password**: Token personal de GitHub (para repos privados) o cualquier texto (para repos públicos)
 4. Click "Save & Update"
 
 ### 3.6 Configurar variables de entorno de la API
@@ -168,7 +169,7 @@ NODE_ENV=production
 ### 3.7 Desplegar la API
 
 1. Ve a "Deployment"
-2. En "Method" selecciona "Deploy from Dockerfile"
+2. En "Method" selecciona "Deploy from captain-definition"
 3. Click "Deploy Now"
 4. Espera a que termine el build (puede tardar 5-10 minutos la primera vez)
 

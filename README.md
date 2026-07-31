@@ -125,8 +125,9 @@ Crea 3 aplicaciones en CapRover:
    - Habilitar HTTP Basic Auth en CapRover para proteger el acceso
 
 3. **aula-docente-api** (API)
-   - Tipo: Deploy from Dockerfile
-   - Usa el `Dockerfile` en `apps/api/`
+   - Tipo: Deploy from captain-definition
+   - El archivo `captain-definition` está en la raíz del repositorio
+   - CapRover detectará automáticamente el Dockerfile en `apps/api/`
 
 #### Paso 2: Configurar variables de entorno en CapRover
 
