@@ -93,9 +93,8 @@ export const useAuthStore = defineStore('auth', () => {
         initialized.value = true;
         return true;
       } catch {
-        const refreshed = await refreshToken();
         initialized.value = true;
-        return refreshed;
+        return hasAccessToken();
       }
     }
 

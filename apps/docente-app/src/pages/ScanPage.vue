@@ -106,7 +106,21 @@
             <div v-if="cameraActive" class="scan-panel__camera scan-panel__camera--active">
               <video ref="videoRef" autoplay playsinline class="scan-panel__video" />
               <canvas ref="canvasRef" class="scan-panel__canvas" />
-              <div v-if="!scanEnabled" class="scan-panel__mask"></div>
+              <div v-if="!scanEnabled" class="scan-panel__mask">
+                <div class="scan-panel__mask-content">
+                  <div class="scan-panel__mask-title">Escáner en pausa</div>
+                  <div class="scan-panel__mask-text">Presiona el botón para capturar un QR.</div>
+                  <q-btn
+                    color="primary"
+                    unelevated
+                    size="lg"
+                    icon="play_arrow"
+                    label="Iniciar captura"
+                    :disable="isProcessingScan || !selectedActivity"
+                    @click="enableScan"
+                  />
+                </div>
+              </div>
               <div class="scan-panel__frame"></div>
             </div>
             <div v-else class="scan-panel__camera">
@@ -115,18 +129,18 @@
               </div>
             </div>
 
-            <h2 class="scan-panel__title">{{ lastResult?.title || 'Registro listo' }}</h2>
-            <p class="scan-panel__text">{{ lastResult?.message || helperText }}</p>
-            <q-btn
-              v-if="cameraActive"
-              color="primary"
-              unelevated
-              class="full-width q-mt-md"
-              :icon="scanEnabled ? 'qr_code_scanner' : 'play_arrow'"
-              :label="scanEnabled ? 'Escaneando... apunta al QR' : 'Presionar para escanear un QR'"
-              :disable="scanEnabled || isProcessingScan || !selectedActivity"
-              @click="enableScan"
-            />
+            <template v-if="lastResult">
+              <h2 class="scan-panel__title">{{ lastResult.title }}</h2>
+              <p class="scan-panel__text">{{ lastResult.message }}</p>
+            </template>
+            <template v-else-if="!cameraActive">
+              <h2 class="scan-panel__title">Cámara cerrada</h2>
+              <p class="scan-panel__text">{{ helperText }}</p>
+            </template>
+            <template v-else-if="scanEnabled">
+              <h2 class="scan-panel__title">Escaneando</h2>
+              <p class="scan-panel__text">Apunta la cámara al código QR del estudiante.</p>
+            </template>
           </q-card-section>
         </q-card>
       </template>
@@ -406,7 +420,32 @@ onUnmounted(() => {
   position: absolute;
   inset: 0;
   background: rgba(0, 0, 0, 0.88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   z-index: 1;
+}
+
+.scan-panel__mask-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 24px;
+  text-align: center;
+  color: #fff;
+}
+
+.scan-panel__mask-title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.scan-panel__mask-text {
+  max-width: 260px;
+  font-size: 1rem;
+  line-height: 1.4;
 }
 
 .scan-panel__frame {

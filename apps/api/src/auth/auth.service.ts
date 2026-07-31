@@ -218,7 +218,9 @@ export class AuthService {
         ? this.parseDurationToMilliseconds(
             this.configService.get<string>('JWT_REFRESH_EXPIRES_IN', '7d'),
           )
-        : undefined,
+        : this.parseDurationToMilliseconds(
+            this.configService.get<string>('JWT_SESSION_EXPIRES_IN', '1d'),
+          ),
     };
   }
 
