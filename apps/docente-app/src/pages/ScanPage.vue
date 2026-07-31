@@ -107,21 +107,16 @@
               <video ref="videoRef" autoplay playsinline class="scan-panel__video" />
               <canvas ref="canvasRef" class="scan-panel__canvas" />
               <div v-if="!scanEnabled" class="scan-panel__mask">
-                <div class="scan-panel__mask-content">
-                  <div class="scan-panel__mask-title">Escáner en pausa</div>
-                  <div class="scan-panel__mask-text">Presiona el botón para capturar un QR.</div>
-                  <q-btn
-                    color="primary"
-                    unelevated
-                    size="lg"
-                    icon="play_arrow"
-                    label="Iniciar captura"
-                    :disable="isProcessingScan || !selectedActivity"
-                    @click="enableScan"
-                  />
-                </div>
+                <q-btn
+                  color="primary"
+                  unelevated
+                  size="lg"
+                  icon="qr_code_scanner"
+                  label="Escanear QR"
+                  :disable="isProcessingScan || !selectedActivity"
+                  @click="enableScan"
+                />
               </div>
-              <div class="scan-panel__frame"></div>
             </div>
             <div v-else class="scan-panel__camera">
               <div class="scan-panel__frame">
@@ -130,16 +125,7 @@
             </div>
 
             <template v-if="lastResult">
-              <h2 class="scan-panel__title">{{ lastResult.title }}</h2>
-              <p class="scan-panel__text">{{ lastResult.message }}</p>
-            </template>
-            <template v-else-if="!cameraActive">
-              <h2 class="scan-panel__title">Cámara cerrada</h2>
-              <p class="scan-panel__text">{{ helperText }}</p>
-            </template>
-            <template v-else-if="scanEnabled">
-              <h2 class="scan-panel__title">Escaneando</h2>
-              <p class="scan-panel__text">Apunta la cámara al código QR del estudiante.</p>
+              <p class="scan-panel__result">{{ lastResult.title }}: {{ lastResult.message }}</p>
             </template>
           </q-card-section>
         </q-card>
@@ -243,18 +229,31 @@ async function startCamera() {
   if (cameraActive.value || isStartingCamera.value) return;
   if (!videoRef.value) return;
   isStartingCamera.value = true;
+
+  stopScanLoop();
+  if (videoRef.value.srcObject) {
+    const oldStream = videoRef.value.srcObject as MediaStream;
+    oldStream.getTracks().forEach((t) => t.stop());
+    videoRef.value.srcObject = null;
+  }
+
   try {
     const stream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: 'environment', width: { ideal: 720 }, height: { ideal: 720 } },
     });
-    stopCamera();
     videoRef.value.srcObject = stream;
     await videoRef.value.play();
     cameraActive.value = true;
     scanEnabled.value = false;
+    lastResult.value = null;
     scanLoop.value = setInterval(() => void decodeFrame(), 350);
-  } catch {
-    $q.notify({ type: 'negative', message: 'No se pudo acceder a la cámara.' });
+  } catch (err: any) {
+    const msg = err?.name === 'NotAllowedError'
+      ? 'Permiso de cámara denegado. Revisa la configuración del navegador.'
+      : err?.name === 'NotFoundError'
+        ? 'No se encontró una cámara en el dispositivo.'
+        : err?.message || 'No se pudo acceder a la cámara.';
+    $q.notify({ type: 'negative', message: msg });
   } finally {
     isStartingCamera.value = false;
   }
@@ -266,16 +265,18 @@ function enableScan() {
   scanEnabled.value = true;
 }
 
-function stopCamera() {
+function stopScanLoop() {
   if (scanLoop.value) {
     clearInterval(scanLoop.value);
     scanLoop.value = null;
   }
+}
+
+function stopCamera() {
+  stopScanLoop();
   if (videoRef.value?.srcObject) {
     const stream = videoRef.value.srcObject as MediaStream;
-    stream.getTracks().forEach((track) => track.stop());
-  }
-  if (videoRef.value) {
+    stream.getTracks().forEach((t) => t.stop());
     videoRef.value.srcObject = null;
   }
   scanEnabled.value = false;
@@ -396,17 +397,19 @@ onUnmounted(() => {
 .scan-panel__camera {
   position: relative;
   overflow: hidden;
-  min-height: 260px;
   border-radius: 12px;
   background: #111;
+  min-height: 280px;
 }
 
 .scan-panel__camera--active {
-  min-height: 300px;
+  aspect-ratio: 1 / 1;
+  min-height: unset;
 }
 
 .scan-panel__video {
-  display: block;
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -419,42 +422,26 @@ onUnmounted(() => {
 .scan-panel__mask {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.88);
   display: flex;
   align-items: center;
   justify-content: center;
+  background: rgba(0, 0, 0, 0.75);
   z-index: 1;
 }
 
-.scan-panel__mask-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 14px;
-  padding: 24px;
-  text-align: center;
-  color: #fff;
-}
-
-.scan-panel__mask-title {
-  font-size: 1.4rem;
-  font-weight: 700;
-  line-height: 1.2;
-}
-
-.scan-panel__mask-text {
-  max-width: 260px;
-  font-size: 1rem;
-  line-height: 1.4;
-}
-
 .scan-panel__frame {
-  position: absolute;
-  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 2;
+  height: 100%;
   color: rgba(255, 255, 255, 0.25);
+}
+
+.scan-panel__result {
+  text-align: center;
+  padding: 8px;
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--q-positive);
 }
 </style>
