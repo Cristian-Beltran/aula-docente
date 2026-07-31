@@ -10,7 +10,7 @@ declare module 'vue' {
 }
 
 const api = axios.create({
-  baseURL: process.env.API_URL || 'http://localhost:3001',
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3001',
   timeout: 15000,
   withCredentials: true,
 });
