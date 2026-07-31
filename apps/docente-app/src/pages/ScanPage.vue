@@ -103,20 +103,10 @@
 
         <q-card class="scan-panel">
           <q-card-section class="scan-panel__section">
-            <div v-if="cameraActive" class="scan-panel__camera scan-panel__camera--active">
+            <div v-if="cameraActive || isStartingCamera" class="scan-panel__camera scan-panel__camera--active">
               <video ref="videoRef" autoplay playsinline class="scan-panel__video" />
               <canvas ref="canvasRef" class="scan-panel__canvas" />
-              <div v-if="!scanEnabled" class="scan-panel__mask">
-                <q-btn
-                  color="primary"
-                  unelevated
-                  size="lg"
-                  icon="qr_code_scanner"
-                  label="Escanear QR"
-                  :disable="isProcessingScan || !selectedActivity"
-                  @click="enableScan"
-                />
-              </div>
+              <div v-if="!scanEnabled" class="scan-panel__mask"></div>
             </div>
             <div v-else class="scan-panel__camera">
               <div class="scan-panel__frame">
@@ -127,6 +117,16 @@
             <template v-if="lastResult">
               <p class="scan-panel__result">{{ lastResult.title }}: {{ lastResult.message }}</p>
             </template>
+            <q-btn
+              v-if="cameraActive"
+              color="primary"
+              unelevated
+              class="full-width q-mt-md"
+              icon="qr_code_scanner"
+              :label="scanEnabled ? 'Escaneando QR...' : 'Escanear QR'"
+              :disable="scanEnabled || isProcessingScan || !selectedActivity"
+              @click="enableScan"
+            />
           </q-card-section>
         </q-card>
       </template>
@@ -135,7 +135,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue';
 import type { Activity, WorkflowRosterItem } from 'src/services/types';
 import { useQuasar } from 'quasar';
 import { useTeacherWorkflowStore } from 'stores/teacher-workflow';
@@ -227,8 +227,16 @@ function filterStudents(value: string, update: (callback: () => void) => void) {
 
 async function startCamera() {
   if (cameraActive.value || isStartingCamera.value) return;
-  if (!videoRef.value) return;
   isStartingCamera.value = true;
+  cameraActive.value = true;
+  await nextTick();
+
+  if (!videoRef.value) {
+    cameraActive.value = false;
+    isStartingCamera.value = false;
+    $q.notify({ type: 'negative', message: 'No se pudo inicializar la vista de cámara.' });
+    return;
+  }
 
   stopScanLoop();
   if (videoRef.value.srcObject) {
@@ -248,6 +256,7 @@ async function startCamera() {
     lastResult.value = null;
     scanLoop.value = setInterval(() => void decodeFrame(), 350);
   } catch (err: any) {
+    cameraActive.value = false;
     const msg = err?.name === 'NotAllowedError'
       ? 'Permiso de cámara denegado. Revisa la configuración del navegador.'
       : err?.name === 'NotFoundError'
