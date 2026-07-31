@@ -93,13 +93,14 @@ export const useAuthStore = defineStore('auth', () => {
         initialized.value = true;
         return true;
       } catch {
-        // token might be expired, fall through to refresh
+        const refreshed = await refreshToken();
+        initialized.value = true;
+        return refreshed;
       }
     }
 
-    const refreshed = await refreshToken();
     initialized.value = true;
-    return refreshed;
+    return false;
   }
 
   return {

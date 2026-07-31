@@ -8,8 +8,8 @@
             {{ selectedActivity ? selectedActivity.title : 'Selecciona una actividad para continuar' }}
           </p>
         </div>
-        <div class="app-chip" :class="cameraActive ? 'app-chip--positive' : ''">
-          {{ cameraActive ? 'Escaneando' : 'Preparado' }}
+        <div class="app-chip" :class="scanEnabled ? 'app-chip--positive' : ''">
+          {{ scanStatusLabel }}
         </div>
       </section>
 
@@ -106,6 +106,7 @@
             <div v-if="cameraActive" class="scan-panel__camera scan-panel__camera--active">
               <video ref="videoRef" autoplay playsinline class="scan-panel__video" />
               <canvas ref="canvasRef" class="scan-panel__canvas" />
+              <div v-if="!scanEnabled" class="scan-panel__mask"></div>
               <div class="scan-panel__frame"></div>
             </div>
             <div v-else class="scan-panel__camera">
@@ -116,6 +117,16 @@
 
             <h2 class="scan-panel__title">{{ lastResult?.title || 'Registro listo' }}</h2>
             <p class="scan-panel__text">{{ lastResult?.message || helperText }}</p>
+            <q-btn
+              v-if="cameraActive"
+              color="primary"
+              unelevated
+              class="full-width q-mt-md"
+              :icon="scanEnabled ? 'qr_code_scanner' : 'play_arrow'"
+              :label="scanEnabled ? 'Escaneando... apunta al QR' : 'Presionar para escanear un QR'"
+              :disable="scanEnabled || isProcessingScan || !selectedActivity"
+              @click="enableScan"
+            />
           </q-card-section>
         </q-card>
       </template>
@@ -131,11 +142,18 @@ import { useTeacherWorkflowStore } from 'stores/teacher-workflow';
 
 const $q = useQuasar();
 const workflow = useTeacherWorkflowStore();
+const BarcodeDetectorCtor = (window as Window & {
+  BarcodeDetector?: new (options?: { formats?: string[] }) => { detect: (source: CanvasImageSource) => Promise<Array<{ rawValue?: string }>> };
+}).BarcodeDetector;
 
 const videoRef = ref<HTMLVideoElement | null>(null);
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 const cameraActive = ref(false);
 const scanLoop = ref<ReturnType<typeof setInterval> | null>(null);
+const scanEnabled = ref(false);
+const isStartingCamera = ref(false);
+const isProcessingScan = ref(false);
+const detector = BarcodeDetectorCtor ? new BarcodeDetectorCtor({ formats: ['qr_code'] }) : null;
 const lastResult = ref<{ title: string; message: string } | null>(null);
 const selectedActivityId = ref<string | null>(null);
 const selectedEnrollmentId = ref<string | null>(null);
@@ -164,9 +182,17 @@ const selectedActivityModeText = computed(() => {
 });
 const helperText = computed(() => {
   if (!selectedActivity.value) return 'Selecciona la actividad que vas a calificar.';
+  if (cameraActive.value && !scanEnabled.value) {
+    return 'La cámara está lista, pero no escaneará hasta que presiones el botón inferior.';
+  }
   return selectedActivity.value.gradingMode === 'SCORE_0_100'
     ? 'Escanea un QR o busca por nombre. Luego ingresa la nota del estudiante.'
     : 'Escanea un QR o busca por nombre. Luego indica cuántas firmas registrar.';
+});
+const scanStatusLabel = computed(() => {
+  if (scanEnabled.value) return 'Escaneando';
+  if (cameraActive.value) return 'Cámara lista';
+  return 'Preparado';
 });
 
 async function loadContext() {
@@ -200,19 +226,30 @@ function filterStudents(value: string, update: (callback: () => void) => void) {
 }
 
 async function startCamera() {
+  if (cameraActive.value || isStartingCamera.value) return;
+  if (!videoRef.value) return;
+  isStartingCamera.value = true;
   try {
     const stream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: 'environment', width: { ideal: 720 }, height: { ideal: 720 } },
     });
-    if (videoRef.value) {
-      videoRef.value.srcObject = stream;
-      await videoRef.value.play();
-      cameraActive.value = true;
-      scanLoop.value = setInterval(() => void decodeFrame(), 350);
-    }
+    stopCamera();
+    videoRef.value.srcObject = stream;
+    await videoRef.value.play();
+    cameraActive.value = true;
+    scanEnabled.value = false;
+    scanLoop.value = setInterval(() => void decodeFrame(), 350);
   } catch {
     $q.notify({ type: 'negative', message: 'No se pudo acceder a la cámara.' });
+  } finally {
+    isStartingCamera.value = false;
   }
+}
+
+function enableScan() {
+  if (!cameraActive.value || isProcessingScan.value) return;
+  lastResult.value = null;
+  scanEnabled.value = true;
 }
 
 function stopCamera() {
@@ -227,24 +264,27 @@ function stopCamera() {
   if (videoRef.value) {
     videoRef.value.srcObject = null;
   }
+  scanEnabled.value = false;
+  isProcessingScan.value = false;
   cameraActive.value = false;
 }
 
 async function decodeFrame() {
-  if (!videoRef.value || !canvasRef.value || !selectedActivity.value) return;
+  if (!scanEnabled.value || isProcessingScan.value || !videoRef.value || !canvasRef.value || !selectedActivity.value) return;
+  if (!detector) return;
   const canvas = canvasRef.value;
   const video = videoRef.value;
   const context = canvas.getContext('2d');
-  if (!context) return;
+  if (!context || !video.videoWidth || !video.videoHeight) return;
 
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
   context.drawImage(video, 0, 0);
 
   try {
-    const detector = new (window as any).BarcodeDetector({ formats: ['qr_code'] });
     const matches = await detector.detect(canvas as any);
     if (matches[0]?.rawValue) {
+      scanEnabled.value = false;
       await processRegistration({ token: matches[0].rawValue });
     }
   } catch {
@@ -287,11 +327,15 @@ async function promptActivityValue(activity: Activity) {
 }
 
 async function processRegistration(identity: { token?: string; enrollmentId?: string }) {
-  if (!selectedActivity.value) return;
+  if (!selectedActivity.value || isProcessingScan.value) return;
 
-  stopCamera();
+  scanEnabled.value = false;
+  isProcessingScan.value = true;
   const extra = await promptActivityValue(selectedActivity.value);
-  if (!extra) return;
+  if (!extra) {
+    isProcessingScan.value = false;
+    return;
+  }
 
   try {
     const { data } = await workflow.scanActivity(selectedActivity.value.id, {
@@ -310,6 +354,8 @@ async function processRegistration(identity: { token?: string; enrollmentId?: st
       message: error?.response?.data?.message || 'Revisa el estado de la clase o la actividad.',
     };
     $q.notify({ type: 'negative', message: lastResult.value.message });
+  } finally {
+    isProcessingScan.value = false;
   }
 }
 
@@ -326,3 +372,50 @@ onUnmounted(() => {
   stopCamera();
 });
 </script>
+
+<style scoped>
+.scan-panel__section {
+  display: flex;
+  flex-direction: column;
+}
+
+.scan-panel__camera {
+  position: relative;
+  overflow: hidden;
+  min-height: 260px;
+  border-radius: 12px;
+  background: #111;
+}
+
+.scan-panel__camera--active {
+  min-height: 300px;
+}
+
+.scan-panel__video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.scan-panel__canvas {
+  display: none;
+}
+
+.scan-panel__mask {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.88);
+  z-index: 1;
+}
+
+.scan-panel__frame {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  color: rgba(255, 255, 255, 0.25);
+}
+</style>

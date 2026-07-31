@@ -57,7 +57,7 @@
               <q-spinner color="primary" size="28px" />
             </div>
             <template v-else>
-              <img v-if="qrImage" :src="qrImage" style="width: 220px; height: 220px" alt="QR" />
+              <img v-if="qrImage" :src="qrImage" style="width: 220px; max-width: 100%; height: auto" alt="QR" />
               <div class="text-weight-bold q-mt-sm">{{ qrStudentName }}</div>
               <div class="text-caption text-grey-7">{{ qrStudentCode }}</div>
             </template>
@@ -97,7 +97,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useQuasar } from 'quasar';
 import QRCode from 'qrcode';
@@ -126,6 +126,7 @@ const qrImage = ref('');
 const qrStudentName = ref('');
 const qrStudentCode = ref('');
 const downloadingPdf = ref(false);
+const courseLabel = computed(() => course.value?.displayName || course.value?.name || course.value?.subject?.name || 'Curso');
 
 const studentsPage = ref<WorkflowStudentPage>({
   items: [], total: 0, page: 1, pageSize: 25, totalPages: 1,
@@ -161,17 +162,90 @@ async function openSingleQrModal(enrollmentId: string | null) {
   try {
     const { data } = await teacherWorkflowService.getQrCards(courseId.value, { enrollmentId });
     if (data.length > 0) {
-      qrImage.value = await QRCode.toDataURL(data[0].qrToken, {
-        margin: 2,
-        width: 300,
-        color: { dark: '#16324f' },
-      });
+      qrImage.value = await buildQrImage(data[0].qrToken, qrStudentName.value, courseLabel.value, 300);
     }
   } catch {
     $q.notify({ type: 'negative', message: 'No se pudo generar el QR.' });
   } finally {
     qrLoading.value = false;
   }
+}
+
+async function buildQrImage(qrToken: string, studentName: string, courseName: string, qrSize = 300) {
+  const qrDataUrl = await QRCode.toDataURL(qrToken, {
+    margin: 2,
+    width: qrSize,
+    color: { dark: '#16324f' },
+  });
+  const qrImageElement = await loadImage(qrDataUrl);
+  const canvas = document.createElement('canvas');
+  const context = canvas.getContext('2d');
+  if (!context) return qrDataUrl;
+
+  const padding = 24;
+  const bottomSpace = 108;
+  canvas.width = qrSize + padding * 2;
+  canvas.height = qrSize + padding * 2 + bottomSpace;
+
+  context.fillStyle = '#ffffff';
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.drawImage(qrImageElement, padding, padding, qrSize, qrSize);
+
+  context.textAlign = 'center';
+  context.textBaseline = 'top';
+  context.fillStyle = '#16324f';
+  context.font = 'bold 20px sans-serif';
+  drawCenteredMultilineText(context, studentName, canvas.width / 2, qrSize + padding + 8, canvas.width - 32, 24, 2);
+
+  context.fillStyle = '#5b6b7c';
+  context.font = '16px sans-serif';
+  drawCenteredMultilineText(context, courseName, canvas.width / 2, qrSize + padding + 58, canvas.width - 32, 20, 2);
+
+  return canvas.toDataURL('image/png');
+}
+
+function loadImage(src: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error('No se pudo cargar la imagen QR'));
+    image.src = src;
+  });
+}
+
+function drawCenteredMultilineText(
+  context: CanvasRenderingContext2D,
+  text: string,
+  centerX: number,
+  startY: number,
+  maxWidth: number,
+  lineHeight: number,
+  maxLines: number,
+) {
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let currentLine = '';
+
+  words.forEach((word) => {
+    const candidate = currentLine ? `${currentLine} ${word}` : word;
+    if (context.measureText(candidate).width <= maxWidth || !currentLine) {
+      currentLine = candidate;
+      return;
+    }
+
+    lines.push(currentLine);
+    currentLine = word;
+  });
+
+  if (currentLine) {
+    lines.push(currentLine);
+  }
+
+  lines.slice(0, maxLines).forEach((line, index) => {
+    const isLastVisibleLine = index === maxLines - 1 && lines.length > maxLines;
+    const value = isLastVisibleLine ? `${line}…` : line;
+    context.fillText(value, centerX, startY + index * lineHeight, maxWidth);
+  });
 }
 
 function downloadQrImage() {

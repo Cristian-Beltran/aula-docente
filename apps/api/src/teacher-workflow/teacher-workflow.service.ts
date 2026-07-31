@@ -441,6 +441,12 @@ export class TeacherWorkflowService {
 
   async generateQrPdf(courseId: string): Promise<Buffer> {
     const items = await this.getCourseQrCards(courseId);
+    const course = await this.courseRepository.findOne({
+      where: { id: courseId },
+      relations: ['subject'],
+    });
+    if (!course) throw new NotFoundException('Curso no encontrado');
+    const courseName = course.subject?.name || 'Curso';
 
     const COLS = 3;
     const ROWS = 4;
@@ -489,6 +495,16 @@ export class TeacherWorkflowService {
         .fillColor('#000')
         .text(name.trim(), x + 2, y + qrSize + 18, {
           width: CELL_W - 4,
+          align: 'center',
+          lineBreak: true,
+        });
+
+      doc
+        .font('Helvetica')
+        .fontSize(6)
+        .fillColor('#4b5b6b')
+        .text(courseName, x + 6, y + qrSize + 32, {
+          width: CELL_W - 12,
           align: 'center',
           lineBreak: true,
         });
