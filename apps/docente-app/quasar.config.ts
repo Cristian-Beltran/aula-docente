@@ -51,7 +51,7 @@ export default defineConfig((ctx) => {
       middlewares: ['render'],
     },
     pwa: {
-      workboxMode: 'generateSW',
+      workboxMode: 'GenerateSW',
       injectPwaMetaTags: true,
       swFilename: 'sw.js',
       manifestFilename: 'manifest.json',
