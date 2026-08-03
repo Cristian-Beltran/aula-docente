@@ -31,21 +31,38 @@
       </q-card>
 
       <template v-else>
-        <q-card class="app-list-card hero-card" v-if="workflow.weekAgenda?.openSession">
-          <div class="app-list-card__row">
-            <div>
-              <div class="app-list-card__meta">Clase actual</div>
-              <h2 class="app-list-card__title">{{ sessionLabel(workflow.weekAgenda.openSession) }}</h2>
-              <p class="app-list-card__meta">{{ sessionMeta(workflow.weekAgenda.openSession) }}</p>
+        <div class="app-grid home-grid">
+          <q-card class="app-list-card hero-card" v-if="workflow.weekAgenda?.openSession">
+            <div class="app-list-card__row home-hero-card">
+              <div>
+                <div class="app-list-card__meta">Clase actual</div>
+                <h2 class="app-list-card__title">{{ sessionLabel(workflow.weekAgenda.openSession) }}</h2>
+                <p class="app-list-card__meta">{{ sessionMeta(workflow.weekAgenda.openSession) }}</p>
+              </div>
+              <q-btn
+                color="primary"
+                unelevated
+                label="Tomar lista"
+                :to="{ name: 'session-attendance', params: { sessionId: workflow.weekAgenda.openSession.id } }"
+              />
             </div>
-            <q-btn
-              color="primary"
-              unelevated
-              label="Tomar lista"
-              :to="{ name: 'session-attendance', params: { sessionId: workflow.weekAgenda.openSession.id } }"
-            />
-          </div>
-        </q-card>
+          </q-card>
+
+          <q-card class="app-surface home-summary-card">
+            <q-card-section class="home-summary-card__section">
+              <div>
+                <div class="text-caption text-grey-7">Sesiones esta semana</div>
+                <div class="text-h5 text-weight-bold text-primary q-mt-xs">{{ totalSessions }}</div>
+              </div>
+              <div>
+                <div class="text-caption text-grey-7">Pendientes</div>
+                <div class="text-h5 text-weight-bold q-mt-xs" :class="pendingSessions > 0 ? 'text-orange-8' : 'text-positive'">
+                  {{ pendingSessions }}
+                </div>
+              </div>
+            </q-card-section>
+          </q-card>
+        </div>
 
         <q-card class="app-surface">
           <q-card-section>
@@ -205,6 +222,13 @@ const visibleDays = computed(() => {
     return dayOfWeek !== 0;
   });
 });
+const totalSessions = computed(() => visibleDays.value.reduce((sum, day) => sum + day.sessions.length, 0));
+const pendingSessions = computed(() =>
+  visibleDays.value.reduce(
+    (sum, day) => sum + day.sessions.filter((session) => session.status === 'PLANNED' && !session.attendanceTaken).length,
+    0,
+  ),
+);
 
 function isToday(date: string) {
   return date === todayStr();
@@ -246,5 +270,22 @@ onMounted(() => {
 .today-card {
   border: 1px solid rgba(27, 95, 167, 0.22);
   box-shadow: 0 10px 26px rgba(27, 95, 167, 0.08);
+}
+
+.home-summary-card__section {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+@media (min-width: 1024px) {
+  .home-grid {
+    grid-template-columns: minmax(0, 1.5fr) minmax(280px, 0.8fr);
+    align-items: stretch;
+  }
+
+  .home-hero-card {
+    min-height: 116px;
+  }
 }
 </style>

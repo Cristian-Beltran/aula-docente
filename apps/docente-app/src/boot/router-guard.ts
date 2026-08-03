@@ -17,12 +17,12 @@ export default boot(({ router }) => {
     if (!authStore.initialized) {
       const isValid = await authStore.initialize();
       if (!isValid) {
-        return next({ name: 'login', query: { session: 'expired' } });
+        return next({ name: 'login' });
       }
     }
 
     if (!authStore.isAuthenticated) {
-      return next({ name: 'login', query: { session: 'expired' } });
+      return next({ name: 'login' });
     }
 
     const allowedRoles = to.meta.roles as string[] | undefined;

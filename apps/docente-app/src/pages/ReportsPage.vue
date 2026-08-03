@@ -22,94 +22,88 @@
         </q-card-section>
       </q-card>
 
-      <div class="row q-col-gutter-sm">
-        <div class="col-6">
-          <q-card class="text-center q-pa-md rounded-borders">
-            <div class="text-caption text-grey-7">Inscritos</div>
-            <div class="text-h4 text-weight-bold text-primary q-mt-xs">{{ reportsStore.summary?.students ?? 0 }}</div>
-          </q-card>
-        </div>
-        <div class="col-6">
-          <q-card class="text-center q-pa-md rounded-borders">
-            <div class="text-caption text-grey-7">Sesiones</div>
-            <div class="text-h4 text-weight-bold text-primary q-mt-xs">{{ reportsStore.summary?.sessions ?? 0 }}</div>
-          </q-card>
-        </div>
-        <div class="col-6">
-          <q-card class="text-center q-pa-md rounded-borders">
-            <div class="text-caption text-grey-7">Firmas</div>
-            <div class="text-h4 text-weight-bold text-primary q-mt-xs">{{ reportsStore.summary?.signatures ?? 0 }}</div>
-          </q-card>
-        </div>
-        <div class="col-6">
-          <q-card class="text-center q-pa-md rounded-borders">
-            <div class="text-caption text-grey-7">Pendientes</div>
-            <div class="text-h4 text-weight-bold text-primary q-mt-xs">{{ reportsStore.summary?.pendingExceptions ?? 0 }}</div>
-          </q-card>
-        </div>
+      <div class="app-kpi-grid">
+        <q-card class="app-kpi-card text-center">
+          <div class="text-caption text-grey-7">Inscritos</div>
+          <div class="text-h4 text-weight-bold text-primary q-mt-xs">{{ reportsStore.summary?.students ?? 0 }}</div>
+        </q-card>
+        <q-card class="app-kpi-card text-center">
+          <div class="text-caption text-grey-7">Sesiones</div>
+          <div class="text-h4 text-weight-bold text-primary q-mt-xs">{{ reportsStore.summary?.sessions ?? 0 }}</div>
+        </q-card>
+        <q-card class="app-kpi-card text-center">
+          <div class="text-caption text-grey-7">Firmas</div>
+          <div class="text-h4 text-weight-bold text-primary q-mt-xs">{{ reportsStore.summary?.signatures ?? 0 }}</div>
+        </q-card>
+        <q-card class="app-kpi-card text-center">
+          <div class="text-caption text-grey-7">Pendientes</div>
+          <div class="text-h4 text-weight-bold text-primary q-mt-xs">{{ reportsStore.summary?.pendingExceptions ?? 0 }}</div>
+        </q-card>
       </div>
 
-      <q-card class="app-surface">
-        <q-card-section>
-          <div class="app-page-head q-mb-sm">
-            <div>
-              <h2 class="app-page-title" style="font-size: 1.05rem;">Comparación por grupos</h2>
-              <p class="app-page-subtitle">Por grupo</p>
+      <div class="app-grid app-grid--2">
+        <q-card class="app-surface">
+          <q-card-section>
+            <div class="app-page-head q-mb-sm">
+              <div>
+                <h2 class="app-page-title" style="font-size: 1.05rem;">Comparación por grupos</h2>
+                <p class="app-page-subtitle">Por grupo</p>
+              </div>
             </div>
-          </div>
-          <div v-if="reportsStore.loadingComparison" class="app-empty q-py-md">
-            <q-spinner color="primary" size="20px" />
-          </div>
-          <div v-else-if="reportsStore.groupComparison.length === 0" class="app-empty q-py-md">
-            No hay grupos en este curso.
-          </div>
-          <div v-else>
-            <q-list separator>
-              <q-item v-for="group in reportsStore.groupComparison" :key="group.id">
-                <q-item-section>
-                  <q-item-label>{{ group.name }}</q-item-label>
-                  <q-item-label caption>{{ group.code }}</q-item-label>
-                </q-item-section>
-                <q-item-section side top>
-                  <div class="text-caption text-grey-7 q-mb-xs">{{ group.activeMembers }} estudiantes</div>
-                  <div class="text-caption text-grey-7">{{ group.sessions }} sesiones</div>
-                </q-item-section>
-              </q-item>
-            </q-list>
-          </div>
-        </q-card-section>
-      </q-card>
+            <div v-if="reportsStore.loadingComparison" class="app-empty q-py-md">
+              <q-spinner color="primary" size="20px" />
+            </div>
+            <div v-else-if="reportsStore.groupComparison.length === 0" class="app-empty q-py-md">
+              No hay grupos en este curso.
+            </div>
+            <div v-else>
+              <q-list separator>
+                <q-item v-for="group in reportsStore.groupComparison" :key="group.id">
+                  <q-item-section>
+                    <q-item-label>{{ group.name }}</q-item-label>
+                    <q-item-label caption>{{ group.code }}</q-item-label>
+                  </q-item-section>
+                  <q-item-section side top>
+                    <div class="text-caption text-grey-7 q-mb-xs">{{ group.activeMembers }} estudiantes</div>
+                    <div class="text-caption text-grey-7">{{ group.sessions }} sesiones</div>
+                  </q-item-section>
+                </q-item>
+              </q-list>
+            </div>
+          </q-card-section>
+        </q-card>
 
-      <q-card class="app-surface">
-        <q-card-section>
-          <div class="app-page-head q-mb-sm">
-            <div>
-              <h2 class="app-page-title" style="font-size: 1.05rem;">Estudiantes en riesgo</h2>
-              <p class="app-page-subtitle">Ordenados por ausencias y retrasos.</p>
+        <q-card class="app-surface">
+          <q-card-section>
+            <div class="app-page-head q-mb-sm">
+              <div>
+                <h2 class="app-page-title" style="font-size: 1.05rem;">Estudiantes en riesgo</h2>
+                <p class="app-page-subtitle">Ordenados por ausencias y retrasos.</p>
+              </div>
             </div>
-          </div>
-          <div v-if="reportsStore.loadingComparison" class="app-empty q-py-md">
-            <q-spinner color="primary" size="20px" />
-          </div>
-          <div v-else-if="reportsStore.riskStudents.length === 0" class="app-empty q-py-md">
-            No hay estudiantes en riesgo.
-          </div>
-          <div v-else>
-            <q-list separator>
-              <q-item v-for="student in reportsStore.riskStudents.slice(0, 5)" :key="student.enrollmentId">
-                <q-item-section>
-                  <q-item-label>{{ student.firstName }} {{ student.lastName }}</q-item-label>
-                  <q-item-label caption>{{ student.studentCode }}</q-item-label>
-                </q-item-section>
-                <q-item-section side top>
-                  <div class="text-caption text-grey-7 q-mb-xs">{{ student.absences }} faltas</div>
-                  <div class="text-caption text-grey-7">{{ student.lates }} retrasos</div>
-                </q-item-section>
-              </q-item>
-            </q-list>
-          </div>
-        </q-card-section>
-      </q-card>
+            <div v-if="reportsStore.loadingComparison" class="app-empty q-py-md">
+              <q-spinner color="primary" size="20px" />
+            </div>
+            <div v-else-if="reportsStore.riskStudents.length === 0" class="app-empty q-py-md">
+              No hay estudiantes en riesgo.
+            </div>
+            <div v-else>
+              <q-list separator>
+                <q-item v-for="student in reportsStore.riskStudents.slice(0, 5)" :key="student.enrollmentId">
+                  <q-item-section>
+                    <q-item-label>{{ student.firstName }} {{ student.lastName }}</q-item-label>
+                    <q-item-label caption>{{ student.studentCode }}</q-item-label>
+                  </q-item-section>
+                  <q-item-section side top>
+                    <div class="text-caption text-grey-7 q-mb-xs">{{ student.absences }} faltas</div>
+                    <div class="text-caption text-grey-7">{{ student.lates }} retrasos</div>
+                  </q-item-section>
+                </q-item>
+              </q-list>
+            </div>
+          </q-card-section>
+        </q-card>
+      </div>
     </div>
   </q-page>
 </template>

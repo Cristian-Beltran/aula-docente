@@ -1,4 +1,5 @@
 const TOKEN_KEY = 'aula_access_token';
+const REFRESH_TOKEN_KEY = 'aula_refresh_token';
 
 function base64UrlDecode(input: string): string {
   const base64 = input.replace(/-/g, '+').replace(/_/g, '/');
@@ -58,4 +59,20 @@ export function clearAccessToken(): void {
 export function hasAccessToken(): boolean {
   const token = getAccessToken();
   return token !== null && !isTokenExpired(token);
+}
+
+export function getRefreshToken(): string | null {
+  return localStorage.getItem(REFRESH_TOKEN_KEY);
+}
+
+export function setRefreshToken(token: string): void {
+  localStorage.setItem(REFRESH_TOKEN_KEY, token);
+}
+
+export function clearRefreshToken(): void {
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
+}
+
+export function hasRefreshToken(): boolean {
+  return getRefreshToken() !== null;
 }

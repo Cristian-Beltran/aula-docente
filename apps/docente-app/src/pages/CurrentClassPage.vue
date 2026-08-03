@@ -41,103 +41,103 @@
       </q-card>
 
       <template v-else>
-        <q-card class="app-list-card">
-          <div class="app-list-card__row">
-            <div>
-              <h2 class="app-list-card__title">{{ session.topicTaught || sessionLabel(session) }}</h2>
-              <p class="app-list-card__meta">
-                {{ timeRange(session) }}
-                <span v-if="session.classGroup">· {{ session.classGroup.name }}</span>
-                <span class="q-ml-sm app-chip" :class="partialClass(session.partialNumber)">P{{ session.partialNumber || 1 }}</span>
-              </p>
-            </div>
-            <q-btn
-              flat
-              color="primary"
-              icon="fact_check"
-              label="Tomar lista"
-              :to="{ name: 'session-attendance', params: { sessionId: session.id } }"
-            />
-          </div>
-        </q-card>
-
-        <q-card class="app-surface">
-          <q-card-section>
-            <div class="row q-col-gutter-sm">
-              <div class="col-12 col-sm-4">
+        <div class="app-grid app-grid--sidebar current-class-overview">
+          <div class="app-grid current-class-overview__main">
+            <q-card class="app-list-card">
+              <div class="app-list-card__row">
+                <div>
+                  <h2 class="app-list-card__title">{{ session.topicTaught || sessionLabel(session) }}</h2>
+                  <p class="app-list-card__meta">
+                    {{ timeRange(session) }}
+                    <span v-if="session.classGroup">· {{ session.classGroup.name }}</span>
+                    <span class="q-ml-sm app-chip" :class="partialClass(session.partialNumber)">P{{ session.partialNumber || 1 }}</span>
+                  </p>
+                </div>
                 <q-btn
+                  flat
                   color="primary"
-                  unelevated
-                  class="full-width"
+                  icon="fact_check"
                   label="Tomar lista"
                   :to="{ name: 'session-attendance', params: { sessionId: session.id } }"
                 />
               </div>
-              <div class="col-12 col-sm-4">
+            </q-card>
+
+            <q-card class="app-surface">
+              <q-card-section>
+                <div class="row q-col-gutter-sm">
+                  <div class="col-12 col-sm-4">
+                    <q-btn
+                      color="primary"
+                      unelevated
+                      class="full-width"
+                      label="Tomar lista"
+                      :to="{ name: 'session-attendance', params: { sessionId: session.id } }"
+                    />
+                  </div>
+                  <div class="col-12 col-sm-4">
+                    <q-btn
+                      color="accent"
+                      unelevated
+                      class="full-width"
+                      label="Abrir escáner QR"
+                      :disable="!activeActivity"
+                      :to="{ name: 'scan' }"
+                    />
+                  </div>
+                  <div class="col-12 col-sm-4">
+                    <q-btn color="secondary" unelevated class="full-width" label="Nueva actividad" @click="promptCreateActivity" />
+                  </div>
+                </div>
+              </q-card-section>
+            </q-card>
+
+            <div class="app-kpi-grid">
+              <q-card class="app-kpi-card text-center">
+                <div class="text-caption text-grey-7">Asistencia</div>
+                <div class="text-h4 text-weight-bold text-primary q-mt-xs">
+                  {{ attendanceStats.registered }}/{{ rosterItems.length }}
+                </div>
+                <div class="text-caption q-mt-xs" :class="session.attendanceTaken ? 'text-positive' : 'text-orange-8'">
+                  {{ session.attendanceTaken ? 'Lista ya tomada' : 'Lista pendiente' }}
+                </div>
+              </q-card>
+              <q-card class="app-kpi-card text-center">
+                <div class="text-caption text-grey-7">Actividades</div>
+                <div class="text-h4 text-weight-bold text-primary q-mt-xs">{{ activities.length }}</div>
+              </q-card>
+            </div>
+          </div>
+
+          <q-card class="app-surface current-class-log">
+            <q-card-section>
+              <div class="app-page-head q-mb-sm">
+                <div>
+                  <h2 class="app-page-title" style="font-size:1.05rem;">Bitácora</h2>
+                  <p class="app-page-subtitle">Tema visto y resumen breve de la clase</p>
+                </div>
+              </div>
+
+              <div class="q-gutter-md">
+                <q-input v-model="logForm.logTopic" outlined dense label="Tema pasado" />
+                <q-input
+                  v-model="logForm.logContent"
+                  outlined
+                  type="textarea"
+                  autogrow
+                  label="Contenido resumido"
+                />
                 <q-btn
-                  color="accent"
+                  color="primary"
                   unelevated
-                  class="full-width"
-                  label="Abrir escáner QR"
-                  :disable="!activeActivity"
-                  :to="{ name: 'scan' }"
+                  icon="save"
+                  label="Guardar bitácora"
+                  :loading="savingLog"
+                  @click="saveSessionLog"
                 />
               </div>
-              <div class="col-12 col-sm-4">
-                <q-btn color="secondary" unelevated class="full-width" label="Nueva actividad" @click="promptCreateActivity" />
-              </div>
-            </div>
-          </q-card-section>
-        </q-card>
-
-        <q-card class="app-surface">
-          <q-card-section>
-            <div class="app-page-head q-mb-sm">
-              <div>
-                <h2 class="app-page-title" style="font-size:1.05rem;">Bitácora</h2>
-                <p class="app-page-subtitle">Tema visto y resumen breve de la clase</p>
-              </div>
-            </div>
-
-            <div class="q-gutter-md">
-              <q-input v-model="logForm.logTopic" outlined dense label="Tema pasado" />
-              <q-input
-                v-model="logForm.logContent"
-                outlined
-                type="textarea"
-                autogrow
-                label="Contenido resumido"
-              />
-              <q-btn
-                color="primary"
-                unelevated
-                icon="save"
-                label="Guardar bitácora"
-                :loading="savingLog"
-                @click="saveSessionLog"
-              />
-            </div>
-          </q-card-section>
-        </q-card>
-
-        <div class="row q-col-gutter-sm">
-          <div class="col-6">
-            <q-card class="text-center q-pa-md rounded-borders">
-              <div class="text-caption text-grey-7">Asistencia</div>
-              <div class="text-h4 text-weight-bold text-primary q-mt-xs">
-                {{ attendanceStats.registered }}/{{ rosterItems.length }}
-              </div>
-              <div class="text-caption q-mt-xs" :class="session.attendanceTaken ? 'text-positive' : 'text-orange-8'">
-                {{ session.attendanceTaken ? 'Lista ya tomada' : 'Lista pendiente' }}
-              </div>
-            </q-card>
-          </div>
-          <div class="col-6">
-            <q-card class="text-center q-pa-md rounded-borders">
-              <div class="text-caption text-grey-7">Actividades</div>
-              <div class="text-h4 text-weight-bold text-primary q-mt-xs">{{ activities.length }}</div>
-            </q-card>
-          </div>
+            </q-card-section>
+          </q-card>
         </div>
 
         <q-card class="app-surface">
@@ -210,7 +210,7 @@
               </div>
             </div>
 
-            <div v-if="activityBoard.length > 0" class="session-board">
+            <div v-if="activityBoard.length > 0" class="session-board app-scroll-x">
               <table class="session-board__table">
                 <thead>
                   <tr>
@@ -537,13 +537,14 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.session-board {
-  overflow-x: auto;
+.current-class-overview__main,
+.current-class-log {
+  align-self: start;
 }
 
 .session-board__table {
   width: 100%;
-  min-width: 520px;
+  min-width: 720px;
   border-collapse: collapse;
 }
 
@@ -560,5 +561,12 @@ onMounted(() => {
   color: #5b6472;
   font-weight: 700;
   white-space: nowrap;
+}
+
+@media (min-width: 1024px) {
+  .current-class-log {
+    position: sticky;
+    top: 88px;
+  }
 }
 </style>

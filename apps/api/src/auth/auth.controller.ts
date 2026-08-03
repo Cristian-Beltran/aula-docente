@@ -43,15 +43,19 @@ export class AuthController {
       this.authService.buildRefreshCookieOptions(loginDto.rememberMe ?? false),
     );
 
-    const { refreshToken, ...payload } = result;
-    return payload;
+    return {
+      access_token: result.accessToken,
+      refresh_token: result.refreshToken,
+      expires_in: result.expiresIn,
+      user: result.user,
+    };
   }
 
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Renovar access token' })
   async refresh(@Req() request: Request, @Res({ passthrough: true }) response: Response) {
-    const refreshToken = this.extractRefreshToken(request);
+    const refreshToken = this.extractRefreshTokenFromBody(request) ?? this.extractRefreshToken(request);
     if (!refreshToken) {
       throw new HttpException('Refresh token no encontrado.', HttpStatus.UNAUTHORIZED);
     }
@@ -63,8 +67,12 @@ export class AuthController {
       this.authService.buildRefreshCookieOptions(result.rememberMe),
     );
 
-    const { refreshToken: _refreshToken, ...payload } = result;
-    return payload;
+    return {
+      access_token: result.accessToken,
+      refresh_token: result.refreshToken,
+      expires_in: result.expiresIn,
+      user: result.user,
+    };
   }
 
   @Post('logout')
@@ -145,5 +153,11 @@ export class AuthController {
     }
 
     return raw ? decodeURIComponent(raw) : undefined;
+  }
+
+  private extractRefreshTokenFromBody(request: Request): string | undefined {
+    const body = request.body as Record<string, unknown> | undefined;
+    const token = body?.refresh_token;
+    return typeof token === 'string' && token.length > 0 ? token : undefined;
   }
 }

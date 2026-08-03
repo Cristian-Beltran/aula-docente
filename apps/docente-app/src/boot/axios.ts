@@ -1,6 +1,6 @@
 import { boot } from 'quasar/wrappers';
 import axios, { AxiosInstance } from 'axios';
-import { getAccessToken, setAccessToken, clearAccessToken, isTokenExpired } from 'src/services/token.service';
+import { getAccessToken, setAccessToken, clearAccessToken, isTokenExpired, getRefreshToken, setRefreshToken, clearRefreshToken } from 'src/services/token.service';
 
 declare module 'vue' {
   interface ComponentCustomProperties {
@@ -60,20 +60,25 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
+        const refreshToken = getRefreshToken();
         const response = await axios.post(
           `${api.defaults.baseURL}/auth/refresh`,
-          {},
+          { refresh_token: refreshToken },
           { withCredentials: true },
         );
         const newToken = response.data.access_token;
         setAccessToken(newToken);
+        if (response.data.refresh_token) {
+          setRefreshToken(response.data.refresh_token);
+        }
         processQueue();
         originalRequest.headers.Authorization = `Bearer ${newToken}`;
         return api(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError);
         clearAccessToken();
-        window.location.href = '/#/login?session=expired';
+        clearRefreshToken();
+        window.dispatchEvent(new CustomEvent('auth:session-expired'));
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;

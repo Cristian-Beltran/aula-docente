@@ -1,5 +1,7 @@
 :root {
   --app-page-max: 640px;
+  --app-page-max-wide: 1360px;
+  --app-sidebar-width: 320px;
 }
 
 body {
@@ -115,6 +117,28 @@ body {
 
 .app-bottom-safe { padding-bottom: 100px; }
 
+.app-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.app-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.app-kpi-card {
+  padding: 18px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 8px 20px rgba(16, 45, 78, 0.04);
+}
+
+.app-scroll-x {
+  overflow-x: auto;
+}
+
 @media (max-width: 767px) {
   .app-shell {
     padding: 0 18px;
@@ -127,9 +151,34 @@ body {
 
 @media (min-width: 768px) {
   .app-shell {
-    max-width: 880px;
+    max-width: 1120px;
     padding: 0 24px;
   }
 
   .app-bottom-safe { padding-bottom: 32px; }
+}
+
+@media (min-width: 1024px) {
+  .app-shell {
+    max-width: var(--app-page-max-wide);
+    padding: 0 28px;
+  }
+
+  .app-grid--2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .app-grid--3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .app-grid--sidebar {
+    grid-template-columns: minmax(0, 1fr) minmax(280px, var(--app-sidebar-width));
+    align-items: start;
+  }
+
+  .app-kpi-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 16px;
+  }
 }

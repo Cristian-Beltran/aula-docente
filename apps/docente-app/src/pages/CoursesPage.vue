@@ -6,11 +6,17 @@
         <q-btn color="primary" unelevated icon="add" label="Nuevo" class="app-compact-btn" @click="createCourse" />
       </section>
 
-      <q-input v-model="search" outlined dense class="app-search" label="Buscar curso o paralelo">
-        <template #prepend><q-icon name="search" /></template>
-      </q-input>
+      <div class="app-grid courses-toolbar">
+        <q-input v-model="search" outlined dense class="app-search" label="Buscar curso o paralelo">
+          <template #prepend><q-icon name="search" /></template>
+        </q-input>
+        <q-card class="app-kpi-card">
+          <div class="text-caption text-grey-7">Cursos visibles</div>
+          <div class="text-h5 text-weight-bold text-primary q-mt-xs">{{ filteredCourses.length }}</div>
+        </q-card>
+      </div>
 
-      <div class="app-list">
+      <div class="courses-grid">
         <q-card v-for="course in filteredCourses" :key="course.id" class="app-list-card">
           <div class="app-list-card__row">
             <div>
@@ -107,3 +113,22 @@ onMounted(() => {
   void workflow.fetchCourses();
 });
 </script>
+
+<style scoped>
+.courses-grid {
+  display: grid;
+  gap: 12px;
+}
+
+@media (min-width: 1024px) {
+  .courses-toolbar {
+    grid-template-columns: minmax(0, 1fr) 220px;
+    align-items: center;
+  }
+
+  .courses-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+}
+</style>

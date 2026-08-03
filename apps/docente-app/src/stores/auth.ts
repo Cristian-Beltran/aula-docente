@@ -6,6 +6,9 @@ import {
   setAccessToken,
   clearAccessToken,
   hasAccessToken,
+  getRefreshToken,
+  setRefreshToken,
+  clearRefreshToken,
 } from 'src/services/token.service';
 
 export interface User {
@@ -32,6 +35,9 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const response = await api.post('/auth/login', { email, password, rememberMe });
       setAccessToken(response.data.access_token);
+      if (response.data.refresh_token) {
+        setRefreshToken(response.data.refresh_token);
+      }
       user.value = response.data.user;
       return response.data;
     } finally {
@@ -41,12 +47,17 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function refreshToken(): Promise<boolean> {
     try {
-      const response = await api.post('/auth/refresh');
+      const refreshToken = getRefreshToken();
+      const response = await api.post('/auth/refresh', { refresh_token: refreshToken });
       setAccessToken(response.data.access_token);
+      if (response.data.refresh_token) {
+        setRefreshToken(response.data.refresh_token);
+      }
       user.value = response.data.user;
       return true;
     } catch {
       clearAccessToken();
+      clearRefreshToken();
       user.value = null;
       return false;
     }
@@ -59,6 +70,7 @@ export const useAuthStore = defineStore('auth', () => {
       // proceed even if the server call fails
     } finally {
       clearAccessToken();
+      clearRefreshToken();
       user.value = null;
     }
   }
@@ -70,6 +82,7 @@ export const useAuthStore = defineStore('auth', () => {
       // proceed even if the server call fails
     } finally {
       clearAccessToken();
+      clearRefreshToken();
       user.value = null;
     }
   }
