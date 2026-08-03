@@ -373,6 +373,7 @@ export interface RiskStudent {
   enrollmentId: string;
   studentId: string;
   studentCode: string;
+  studentFullName?: string;
   firstName: string;
   lastName: string;
   absences: number;

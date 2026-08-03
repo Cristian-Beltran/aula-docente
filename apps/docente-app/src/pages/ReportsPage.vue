@@ -120,12 +120,12 @@
               <q-list separator>
                 <q-item v-for="student in reportsStore.riskStudents" :key="student.enrollmentId">
                   <q-item-section>
-                    <q-item-label>{{ student.firstName }} {{ student.lastName }}</q-item-label>
+                    <q-item-label>{{ student.studentFullName || `${student.firstName || ''} ${student.lastName || ''}`.trim() || student.studentCode }}</q-item-label>
                     <q-item-label caption>{{ student.studentCode }}</q-item-label>
                   </q-item-section>
                   <q-item-section side top>
-                    <div class="text-caption text-grey-7 q-mb-xs">{{ student.absences }} faltas</div>
-                    <div class="text-caption text-grey-7">{{ student.lates }} retrasos</div>
+                    <div class="text-caption text-negative q-mb-xs">{{ student.absences }} faltas</div>
+                    <div class="text-caption text-warning">{{ student.lates }} retrasos</div>
                   </q-item-section>
                 </q-item>
               </q-list>

@@ -101,7 +101,17 @@ export class ReportsService {
 
     const page = query.page ?? 1;
     const pageSize = query.pageSize ?? 20;
-    const total = await qb.clone().getCount();
+    const countQb = this.groupRepository
+      .createQueryBuilder('group')
+      .select('COUNT(DISTINCT group.id)', 'total')
+      .where('group.course_id = :courseId', { courseId });
+    if (query.search) {
+      countQb.andWhere('(group.name ILIKE :search OR group.code ILIKE :search)', {
+        search: `%${query.search}%`,
+      });
+    }
+    const countResult = await countQb.getRawOne();
+    const total = Number(countResult?.total ?? 0);
     const items = await qb.offset((page - 1) * pageSize).limit(pageSize).getRawMany();
 
     return {
@@ -176,6 +186,7 @@ export class ReportsService {
         'enrollment.id AS enrollmentId',
         'student.id AS studentId',
         'student.student_code AS studentCode',
+        'student.full_name AS studentFullName',
         'student.first_name AS firstName',
         'student.last_name AS lastName',
         `COUNT(DISTINCT attendance.id) FILTER (WHERE attendance.effective_status = '${AttendanceStatus.ABSENT}') AS absences`,
@@ -187,12 +198,20 @@ export class ReportsService {
 
     if (query.search) {
       baseQuery.andWhere(
-        '(student.student_code ILIKE :search OR student.first_name ILIKE :search OR student.last_name ILIKE :search)',
+        '(student.student_code ILIKE :search OR student.first_name ILIKE :search OR student.last_name ILIKE :search OR student.full_name ILIKE :search)',
         { search: `%${query.search}%` },
       );
     }
 
-    const total = await baseQuery.clone().getCount();
+    const countResult = await this.enrollmentRepository
+      .createQueryBuilder('enrollment')
+      .select('COUNT(DISTINCT enrollment.id)', 'total')
+      .leftJoin('enrollment.student', 'student')
+      .where('enrollment.course_id = :courseId', { courseId })
+      .andWhere('enrollment.status = :status', { status: EnrollmentStatus.ACTIVE })
+      .getRawOne();
+    const total = Number(countResult?.total ?? 0);
+
     const items = await baseQuery
       .orderBy('absences', 'DESC')
       .addOrderBy('lates', 'DESC')
