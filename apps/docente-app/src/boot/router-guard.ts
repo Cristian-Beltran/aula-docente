@@ -17,12 +17,12 @@ export default boot(({ router }) => {
     if (!authStore.initialized) {
       const isValid = await authStore.initialize();
       if (!isValid) {
-        return next({ name: 'login' });
+        return next({ name: 'login-page' });
       }
     }
 
     if (!authStore.isAuthenticated) {
-      return next({ name: 'login' });
+      return next({ name: 'login-page' });
     }
 
     const allowedRoles = to.meta.roles as string[] | undefined;

@@ -33,6 +33,10 @@
             </div>
           </div>
 
+          <div v-if="sessionExpired" class="auth-alert">
+            Tu sesión expiró o fue reemplazada por un inicio de sesión en otro dispositivo. Vuelve a ingresar.
+          </div>
+
           <q-form @submit="onSubmit" class="q-gutter-md">
             <q-input
               v-model="email"
@@ -92,7 +96,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { useAuthStore } from 'stores/auth';
@@ -108,6 +112,7 @@ const email = ref('');
 const password = ref('');
 const showPassword = ref(false);
 const rememberMe = ref(false);
+const sessionExpired = computed(() => route.query.reason === 'expired');
 
 async function onSubmit() {
   try {
@@ -180,6 +185,17 @@ async function onSubmit() {
 
 .auth-card {
   padding: 16px;
+}
+
+.auth-alert {
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(239, 107, 74, 0.12);
+  border: 1px solid rgba(239, 107, 74, 0.18);
+  color: #8f3c26;
+  font-size: 0.86rem;
+  line-height: 1.4;
 }
 
 .auth-card__head {

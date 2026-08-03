@@ -130,7 +130,7 @@ function goTo(name: string) {
 
 async function logout() {
   await authStore.logout();
-  void router.push({ name: 'login' });
+  void router.push({ name: 'login-page' });
 }
 </script>
 
