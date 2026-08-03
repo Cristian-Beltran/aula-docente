@@ -79,18 +79,14 @@ export class AuthService {
 
   async refresh(refreshToken: string, meta: RequestMeta) {
     const payload = await this.verifyRefreshToken(refreshToken);
-    const session = await this.sessionRepository.findOne({
-      where: { id: payload.sessionId, userId: payload.sub },
-      relations: ['user'],
-    });
+    const session = await this.findActiveSession(payload.sub, payload.sessionId, ['user']);
 
-    if (!session || session.revokedAt || session.expiresAt <= new Date()) {
+    if (!session) {
       throw new UnauthorizedException('La sesión ya no es válida.');
     }
 
     const matches = await argon2.verify(session.refreshTokenHash, refreshToken);
     if (!matches) {
-      await this.revokeSessionInternal(session.id);
       throw new UnauthorizedException('El refresh token no es válido.');
     }
 
@@ -194,6 +190,11 @@ export class AuthService {
       throw new UnauthorizedException('Usuario no autorizado.');
     }
 
+    const session = await this.findActiveSession(payload.sub, payload.sessionId);
+    if (!session) {
+      throw new UnauthorizedException('La sesión ya no es válida.');
+    }
+
     return this.toAuthUser(user, payload.sessionId);
   }
 
@@ -278,6 +279,23 @@ export class AuthService {
     await this.sessionRepository.update(sessionId, {
       revokedAt: new Date(),
     });
+  }
+
+  private async findActiveSession(
+    userId: string,
+    sessionId: string,
+    relations?: string[],
+  ): Promise<UserSessionEntity | null> {
+    const session = await this.sessionRepository.findOne({
+      where: { id: sessionId, userId },
+      relations,
+    });
+
+    if (!session || session.revokedAt || session.expiresAt <= new Date()) {
+      return null;
+    }
+
+    return session;
   }
 
   private getRefreshExpirationDate(rememberMe: boolean): Date {
