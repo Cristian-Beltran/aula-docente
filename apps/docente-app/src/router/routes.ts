@@ -60,11 +60,6 @@ const routes: RouteRecordRaw[] = [
         component: () => import('pages/ScanPage.vue'),
       },
       {
-        path: 'sessions/:sessionId',
-        name: 'session-detail',
-        component: () => import('pages/SessionDetailPage.vue'),
-      },
-      {
         path: 'sessions/:sessionId/attendance',
         name: 'session-attendance',
         component: () => import('pages/SessionAttendancePage.vue'),

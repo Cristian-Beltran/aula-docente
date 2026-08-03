@@ -80,7 +80,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useQuasar } from 'quasar';
 import type { ExceptionListItem } from 'src/services/types';
 import { useCoursesStore } from 'stores/courses';
@@ -134,6 +134,7 @@ function priorityClass(status: string) {
 async function resolve(exceptionId: string, status: 'APPROVED' | 'REJECTED') {
   if (!coursesStore.selectedCourseId) return;
   await exceptionsStore.resolveException(coursesStore.selectedCourseId, exceptionId, status);
+  reportsStore.updateException(exceptionId, status);
   $q.notify({
     type: status === 'APPROVED' ? 'positive' : 'warning',
     message: status === 'APPROVED' ? 'Excepción aprobada.' : 'Excepción rechazada.',
@@ -157,10 +158,6 @@ async function loadExceptions() {
     loadError.value = 'Error al cargar excepciones.';
   }
 }
-
-watch(selectedTab, () => {
-  void loadExceptions();
-});
 
 onMounted(() => {
   void loadExceptions();

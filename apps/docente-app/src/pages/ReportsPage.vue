@@ -41,6 +41,35 @@
         </q-card>
       </div>
 
+      <q-card v-if="reportsStore.summary" class="app-surface">
+        <q-card-section>
+          <div class="app-page-head q-mb-sm">
+            <div>
+              <h2 class="app-page-title" style="font-size: 1.05rem;">Desglose de asistencia</h2>
+              <p class="app-page-subtitle">Totales acumulados en el curso</p>
+            </div>
+          </div>
+          <div class="row q-col-gutter-sm">
+            <div class="col-3 text-center">
+              <div class="text-h5 text-weight-bold text-positive">{{ reportsStore.summary.attendance.present }}</div>
+              <div class="text-caption text-grey-7">Presentes</div>
+            </div>
+            <div class="col-3 text-center">
+              <div class="text-h5 text-weight-bold text-warning">{{ reportsStore.summary.attendance.late }}</div>
+              <div class="text-caption text-grey-7">Tarde</div>
+            </div>
+            <div class="col-3 text-center">
+              <div class="text-h5 text-weight-bold text-negative">{{ reportsStore.summary.attendance.absent }}</div>
+              <div class="text-caption text-grey-7">Ausentes</div>
+            </div>
+            <div class="col-3 text-center">
+              <div class="text-h5 text-weight-bold text-info">{{ reportsStore.summary.attendance.justified }}</div>
+              <div class="text-caption text-grey-7">Justificados</div>
+            </div>
+          </div>
+        </q-card-section>
+      </q-card>
+
       <div class="app-grid app-grid--2">
         <q-card class="app-surface">
           <q-card-section>
@@ -81,7 +110,7 @@
                 <p class="app-page-subtitle">Ordenados por ausencias y retrasos.</p>
               </div>
             </div>
-            <div v-if="reportsStore.loadingComparison" class="app-empty q-py-md">
+            <div v-if="reportsStore.loadingRisk" class="app-empty q-py-md">
               <q-spinner color="primary" size="20px" />
             </div>
             <div v-else-if="reportsStore.riskStudents.length === 0" class="app-empty q-py-md">
@@ -89,7 +118,7 @@
             </div>
             <div v-else>
               <q-list separator>
-                <q-item v-for="student in reportsStore.riskStudents.slice(0, 5)" :key="student.enrollmentId">
+                <q-item v-for="student in reportsStore.riskStudents" :key="student.enrollmentId">
                   <q-item-section>
                     <q-item-label>{{ student.firstName }} {{ student.lastName }}</q-item-label>
                     <q-item-label caption>{{ student.studentCode }}</q-item-label>

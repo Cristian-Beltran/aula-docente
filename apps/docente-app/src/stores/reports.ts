@@ -21,6 +21,9 @@ export const useReportsStore = defineStore('reports', () => {
   const loadingSummary = ref(false);
   const loadingExceptions = ref(false);
   const loadingComparison = ref(false);
+  const loadingRisk = ref(false);
+  const loadingSignatures = ref(false);
+  const loadingAttendance = ref(false);
 
   async function fetchSummary(courseId: string) {
     loadingSummary.value = true;
@@ -44,10 +47,12 @@ export const useReportsStore = defineStore('reports', () => {
   }
 
   async function fetchRiskStudents(courseId: string, params?: PaginationParams) {
+    loadingRisk.value = true;
     try {
       const { data } = await reportsService.getRiskStudents(courseId, params);
       riskStudents.value = data.items;
     } finally {
+      loadingRisk.value = false;
     }
   }
 
@@ -56,10 +61,12 @@ export const useReportsStore = defineStore('reports', () => {
     activityId: string,
     params?: PaginationParams,
   ) {
+    loadingSignatures.value = true;
     try {
       const { data } = await reportsService.getActivitySignatures(courseId, activityId, params);
       activitySignatures.value = data.items;
     } finally {
+      loadingSignatures.value = false;
     }
   }
 
@@ -68,10 +75,12 @@ export const useReportsStore = defineStore('reports', () => {
     sessionId: string,
     params?: PaginationParams,
   ) {
+    loadingAttendance.value = true;
     try {
       const { data } = await reportsService.getSessionAttendance(courseId, sessionId, params);
       sessionAttendance.value = data.items;
     } finally {
+      loadingAttendance.value = false;
     }
   }
 
@@ -94,6 +103,13 @@ export const useReportsStore = defineStore('reports', () => {
     ]);
   }
 
+  function updateException(exceptionId: string, status: string) {
+    const idx = courseExceptions.value.findIndex((e) => e.id === exceptionId);
+    if (idx !== -1) {
+      courseExceptions.value[idx] = { ...courseExceptions.value[idx], status };
+    }
+  }
+
   function clear() {
     summary.value = null;
     groupComparison.value = [];
@@ -113,6 +129,9 @@ export const useReportsStore = defineStore('reports', () => {
     loadingSummary,
     loadingExceptions,
     loadingComparison,
+    loadingRisk,
+    loadingSignatures,
+    loadingAttendance,
     fetchSummary,
     fetchGroupsComparison,
     fetchRiskStudents,
@@ -120,6 +139,7 @@ export const useReportsStore = defineStore('reports', () => {
     fetchSessionAttendance,
     fetchCourseExceptions,
     hydrateCourseDashboard,
+    updateException,
     clear,
   };
 });

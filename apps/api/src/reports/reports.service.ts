@@ -101,7 +101,7 @@ export class ReportsService {
 
     const page = query.page ?? 1;
     const pageSize = query.pageSize ?? 20;
-    const total = await this.groupRepository.count({ where: { courseId } });
+    const total = await qb.clone().getCount();
     const items = await qb.offset((page - 1) * pageSize).limit(pageSize).getRawMany();
 
     return {
@@ -192,7 +192,7 @@ export class ReportsService {
       );
     }
 
-    const countRows = await baseQuery.clone().getRawMany();
+    const total = await baseQuery.clone().getCount();
     const items = await baseQuery
       .orderBy('absences', 'DESC')
       .addOrderBy('lates', 'DESC')
@@ -202,7 +202,7 @@ export class ReportsService {
 
     return {
       items,
-      meta: buildPaginationMeta(page, pageSize, countRows.length),
+      meta: buildPaginationMeta(page, pageSize, total),
     };
   }
 
