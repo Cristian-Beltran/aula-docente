@@ -118,7 +118,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, nextTick, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import type { AttendanceStatus } from 'src/services/types';
@@ -154,6 +154,9 @@ function syncCurrentIndex() {
 
 function selectStudent(index: number) {
   editIndex.value = index;
+  void nextTick(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
 }
 
 function goBack() {

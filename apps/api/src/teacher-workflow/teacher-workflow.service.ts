@@ -3,9 +3,13 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  ServiceUnavailableException,
   StreamableFile,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
+import { dirname, join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { DataSource, In, IsNull, Repository } from 'typeorm';
 import * as QRCode from 'qrcode';
 const PDFDocument = require('pdfkit');
@@ -59,7 +63,10 @@ type SessionNotesState = {
 
 @Injectable()
 export class TeacherWorkflowService {
+  private opencodeInstancePromise?: Promise<{ client: any; server: { url: string; close(): void } }>;
+
   constructor(
+    private readonly configService: ConfigService,
     private readonly dataSource: DataSource,
     @InjectRepository(AcademicPeriodEntity)
     private readonly academicPeriodRepository: Repository<AcademicPeriodEntity>,
@@ -1025,6 +1032,43 @@ export class TeacherWorkflowService {
     return this.serializeSession(await this.sessionRepository.save(session));
   }
 
+  async improveSessionLog(
+    sessionId: string,
+    body: { logTopic?: string; logContent?: string; topicTaught?: string; notes?: string },
+    userId: string,
+  ) {
+    const session = await this.sessionRepository.findOne({ where: { id: sessionId } });
+    if (!session) throw new NotFoundException('Sesión no encontrada');
+
+    const parsedNotes = this.parseSessionNotes(session.notes);
+    const topic = body.logTopic ?? body.topicTaught;
+    const content = body.logContent ?? body.notes;
+
+    if (topic !== undefined) {
+      parsedNotes.logTopic = String(topic || '').trim();
+    }
+    if (content !== undefined) {
+      parsedNotes.logContent = String(content || '').trim();
+    }
+
+    session.topicTaught = parsedNotes.logTopic || '';
+    session.notes = this.stringifySessionNotes(parsedNotes) as any;
+    await this.sessionRepository.save(session);
+
+    const improved = await this.requestImprovedLogbook({
+      logTopic: parsedNotes.logTopic,
+      logContent: parsedNotes.logContent,
+    });
+
+    parsedNotes.logTopic = improved.logTopic;
+    parsedNotes.logContent = improved.logContent;
+    session.topicTaught = improved.logTopic || session.topicTaught || '';
+    session.notes = this.stringifySessionNotes(parsedNotes) as any;
+    session.createdById = session.createdById || userId;
+
+    return this.serializeSession(await this.sessionRepository.save(session));
+  }
+
   async updateSessionPartial(sessionId: string, partialNumber: number) {
     if (!Number.isInteger(partialNumber) || partialNumber < 1 || partialNumber > 3) {
       throw new BadRequestException('El parcial debe ser 1, 2 o 3');
@@ -1200,6 +1244,102 @@ export class TeacherWorkflowService {
     return {
       activity: this.serializeActivity(activity),
       student: this.serializeStudent(enrollment.student),
+    };
+  }
+
+  async updateStudentActivityResult(
+    sessionId: string,
+    activityId: string,
+    enrollmentId: string,
+    body: { value?: number | string; comment?: string },
+    userId: string,
+  ) {
+    const activity = await this.activityRepository.findOne({ where: { id: activityId } });
+    if (!activity) throw new NotFoundException('Actividad no encontrada');
+    if (activity.classSessionId !== sessionId) {
+      throw new ConflictException('La actividad no corresponde a esta clase');
+    }
+
+    const enrollment = await this.enrollmentRepository.findOne({ where: { id: enrollmentId } });
+    if (!enrollment) throw new NotFoundException('Estudiante no encontrado');
+    if (enrollment.courseId !== activity.courseId) {
+      throw new ConflictException('El estudiante no corresponde a este curso');
+    }
+
+    const comment = body.comment ? String(body.comment).trim() : null;
+    const rawValue = Number(body.value);
+    if (Number.isNaN(rawValue) || rawValue < 0) {
+      throw new BadRequestException('El valor debe ser un número válido');
+    }
+
+    if (activity.gradingMode === ActivityGradingMode.SIGNATURES) {
+      const nextValue = Math.min(Math.floor(rawValue), activity.maxSignatures);
+      const activeRecords = await this.signatureRepository.find({
+        where: { activityId, enrollmentId, classSessionId: sessionId, canceledAt: IsNull() },
+      });
+
+      if (activeRecords.length > 0) {
+        const canceledAt = new Date();
+        for (const record of activeRecords) {
+          record.canceledAt = canceledAt;
+          record.canceledById = userId;
+          record.cancellationReason = 'Corrección manual de firmas';
+        }
+        await this.signatureRepository.save(activeRecords);
+      }
+
+      if (nextValue > 0) {
+        await this.signatureRepository.save(
+          this.signatureRepository.create({
+            activityId,
+            enrollmentId,
+            classSessionId: sessionId,
+            quantity: nextValue,
+            source: SignatureRecordSource.MANUAL,
+            registeredById: userId,
+            comment: comment || undefined,
+            registeredAt: new Date(),
+          }),
+        );
+      }
+
+      return {
+        activityId,
+        enrollmentId,
+        gradingMode: activity.gradingMode,
+        value: nextValue,
+      };
+    }
+
+    if (rawValue > 100) {
+      throw new BadRequestException('La nota debe estar entre 0 y 100');
+    }
+
+    let scoreRecord = await this.scoreRepository.findOne({
+      where: { activityId, enrollmentId, classSessionId: sessionId },
+    });
+
+    if (!scoreRecord) {
+      scoreRecord = this.scoreRepository.create({
+        activityId,
+        enrollmentId,
+        classSessionId: sessionId,
+        registeredById: userId,
+        score: rawValue,
+        comment,
+      });
+    } else {
+      scoreRecord.score = rawValue;
+      scoreRecord.comment = comment;
+      scoreRecord.registeredById = userId;
+    }
+
+    const saved = await this.scoreRepository.save(scoreRecord);
+    return {
+      activityId,
+      enrollmentId,
+      gradingMode: activity.gradingMode,
+      value: Number(saved.score),
     };
   }
 
@@ -1548,14 +1688,24 @@ export class TeacherWorkflowService {
     skipSessionId?: string,
   ) {
     const currentTime = fromDate.getTime();
-    const next = sessions
-      .filter((session) => session.id !== skipSessionId)
-      .find((session) => new Date(session.startsAt).getTime() >= currentTime && session.status !== 'COMPLETED');
+    const currentDateOnly = this.toDateOnly(fromDate);
+    const available = sessions.filter(
+      (session) => session.id !== skipSessionId && session.status !== 'COMPLETED',
+    );
+    const sameDay = available.filter((session) => session.sessionDate === currentDateOnly);
+    if (sameDay.length > 0) {
+      return sameDay[0];
+    }
+
+    const next = available.find((session) => new Date(session.startsAt).getTime() >= currentTime);
     return next || null;
   }
 
-  private isSessionVisible(session: { startsAt: string | Date; status: string }, anchorDate: Date) {
+  private isSessionVisible(session: { startsAt: string | Date; status: string; sessionDate?: string }, anchorDate: Date) {
     if (session.status === 'OPEN') return true;
+    if (session.sessionDate === this.toDateOnly(anchorDate)) {
+      return session.status !== 'COMPLETED';
+    }
     return new Date(session.startsAt).getTime() >= anchorDate.getTime();
   }
 
@@ -1592,6 +1742,7 @@ export class TeacherWorkflowService {
       .addSelect('signature.enrollment_id', 'enrollmentId')
       .addSelect('COALESCE(SUM(signature.quantity), 0)', 'total')
       .where('signature.class_session_id = :sessionId', { sessionId })
+      .andWhere('signature.canceled_at IS NULL')
       .groupBy('signature.activity_id')
       .addGroupBy('signature.enrollment_id')
       .getRawMany<{ activityId: string; enrollmentId: string; total: string }>();
@@ -1633,6 +1784,204 @@ export class TeacherWorkflowService {
         };
       }),
     }));
+  }
+
+  private async requestImprovedLogbook(input: { logTopic: string; logContent: string }) {
+    const opencode = await this.getOpencodeInstance();
+    const { providerID, modelID, variant } = this.parseOpencodeModelSelector();
+    const systemPrompt = this.configService.get<string>(
+      'OPENCODE_LOGBOOK_PROMPT',
+      'Mejora y expande la bitácora de clase manteniendo el idioma español, el contexto académico y los hechos originales. Devuelve exclusivamente un JSON válido con las claves "logTopic" y "logContent".',
+    );
+
+    let sessionID: string | undefined;
+
+    try {
+      const created = await opencode.client.session.create(
+        {
+          directory: process.cwd(),
+          title: 'Mejora de bitácora',
+          model: {
+            id: modelID,
+            providerID,
+            variant,
+          },
+        },
+        { throwOnError: true },
+      );
+
+      sessionID = created.data.id;
+
+      const promptResult = await opencode.client.session.prompt(
+        {
+          sessionID,
+          model: {
+            modelID,
+            providerID,
+          },
+          variant,
+          system: systemPrompt,
+          format: {
+            type: 'json_schema',
+            schema: {
+              type: 'object',
+              properties: {
+                logTopic: {
+                  type: 'string',
+                  description: 'Tema mejor redactado y breve',
+                },
+                logContent: {
+                  type: 'string',
+                  description: 'Bitácora mejorada y expandida en español',
+                },
+              },
+              required: ['logTopic', 'logContent'],
+            },
+            retryCount: 2,
+          },
+          parts: [
+            {
+              type: 'text',
+              text: [
+                `Tema actual: ${input.logTopic || '(vacío)'}`,
+                '',
+                'Bitácora actual:',
+                input.logContent || '(vacío)',
+                '',
+                'Reescribe el tema y la bitácora con mejor redacción, más claridad y un poco más de detalle útil.',
+              ].join('\n'),
+            },
+          ],
+        },
+        { throwOnError: true },
+      );
+
+      const structured = promptResult.data.info?.structured as
+        | { logTopic?: unknown; logContent?: unknown }
+        | undefined;
+      if (structured) {
+        return {
+          logTopic: String(structured.logTopic || '').trim() || input.logTopic.trim(),
+          logContent: String(structured.logContent || '').trim() || input.logContent.trim(),
+        };
+      }
+
+      const text = promptResult.data.parts
+        .filter((part: { type?: string; text?: string }) => part.type === 'text' && typeof part.text === 'string')
+        .map((part: { text: string }) => part.text)
+        .join('\n')
+        .trim();
+
+      const parsed = this.parseImprovedLogbook(text);
+      return {
+        logTopic: parsed.logTopic || input.logTopic.trim(),
+        logContent: parsed.logContent || input.logContent.trim(),
+      };
+    } catch (error: any) {
+      throw new ServiceUnavailableException(
+        error?.message || 'No se pudo mejorar la bitácora con OpenCode.',
+      );
+    } finally {
+      if (sessionID) {
+        await opencode.client.session.delete({ sessionID }, { throwOnError: false }).catch(() => undefined);
+      }
+    }
+  }
+
+  private parseImprovedLogbook(text: string) {
+    const trimmed = text.trim();
+    if (!trimmed) {
+      throw new ServiceUnavailableException('OpenCode no devolvió contenido para la bitácora');
+    }
+
+    const firstBrace = trimmed.indexOf('{');
+    const lastBrace = trimmed.lastIndexOf('}');
+    const jsonCandidate =
+      firstBrace >= 0 && lastBrace > firstBrace ? trimmed.slice(firstBrace, lastBrace + 1) : trimmed;
+
+    try {
+      const parsed = JSON.parse(jsonCandidate);
+      return {
+        logTopic: String(parsed.logTopic || '').trim(),
+        logContent: String(parsed.logContent || '').trim(),
+      };
+    } catch {
+      return {
+        logTopic: '',
+        logContent: trimmed,
+      };
+    }
+  }
+
+  private async getOpencodeInstance() {
+    if (!this.opencodeInstancePromise) {
+      const apiKey = this.configService.get<string>('OPENCODE_API_KEY', '').trim();
+      if (!apiKey) {
+        throw new ServiceUnavailableException('Falta configurar OPENCODE_API_KEY en el archivo .env');
+      }
+
+      const { providerID, modelID } = this.parseOpencodeModelSelector();
+      const baseURL = this.configService
+        .get<string>(
+          'OPENCODE_API_URL',
+          'https://console.opencode.ai/inference/openai/v1/chat/completions',
+        )
+        .trim();
+
+      this.opencodeInstancePromise = this.loadOpencodeSdk().then(({ createOpencode }) =>
+        createOpencode({
+          hostname: this.configService.get<string>('OPENCODE_HOSTNAME', '127.0.0.1'),
+          port: Number(this.configService.get<string>('OPENCODE_PORT', '4096')),
+          timeout: Number(this.configService.get<string>('OPENCODE_TIMEOUT_MS', '15000')),
+          config: {
+            model: `${providerID}/${modelID}`,
+            provider: {
+              [providerID]: {
+                npm: '@ai-sdk/openai-compatible',
+                name: 'OpenCode Gateway',
+                options: {
+                  apiKey,
+                  baseURL,
+                },
+                models: {
+                  [modelID]: {
+                    name: modelID,
+                  },
+                },
+              },
+            },
+          },
+        }),
+      );
+    }
+
+    return this.opencodeInstancePromise;
+  }
+
+  private parseOpencodeModelSelector() {
+    const configured = this.configService.get<string>('OPENCODE_MODEL', 'opencode/gpt-5.4-mini').trim();
+    const configuredProviderID = this.configService.get<string>('OPENCODE_PROVIDER_ID', 'opencode').trim();
+    const [providerPart, modelPart, variantPart] = configured.split('/');
+
+    if (modelPart) {
+      return {
+        providerID: providerPart.trim(),
+        modelID: modelPart.trim(),
+        variant: variantPart?.trim() || undefined,
+      };
+    }
+
+    return {
+      providerID: configuredProviderID,
+      modelID: providerPart.trim(),
+      variant: undefined,
+    };
+  }
+
+  private async loadOpencodeSdk() {
+    const packageJsonPath = require.resolve('@opencode-ai/sdk/package.json');
+    const sdkEntryUrl = pathToFileURL(join(dirname(packageJsonPath), 'dist', 'v2', 'index.js')).href;
+    return (await import(sdkEntryUrl)) as { createOpencode: (options?: unknown) => Promise<any> };
   }
 
   private weekdayLabelToNumber(label: string) {

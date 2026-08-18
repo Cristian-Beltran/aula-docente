@@ -160,6 +160,10 @@ export const teacherWorkflowService = {
     return api.patch<ClassSession>(`/teacher-workflow/sessions/${sessionId}/log`, data);
   },
 
+  improveSessionLog(sessionId: string, data: { logTopic?: string; logContent?: string }) {
+    return api.post<ClassSession>(`/teacher-workflow/sessions/${sessionId}/log/improve`, data);
+  },
+
   updateSessionPartial(sessionId: string, partial: number) {
     return api.patch<ClassSession>(`/teacher-workflow/sessions/${sessionId}/partial`, { partial });
   },
@@ -198,6 +202,18 @@ export const teacherWorkflowService = {
   ) {
     return api.post<{ activity: Activity; student: Student }>(
       `/teacher-workflow/activities/${activityId}/scan`,
+      data,
+    );
+  },
+
+  updateStudentActivityResult(
+    sessionId: string,
+    activityId: string,
+    enrollmentId: string,
+    data: { value: number; comment?: string },
+  ) {
+    return api.patch<{ activityId: string; enrollmentId: string; gradingMode: string; value: number | null }>(
+      `/teacher-workflow/sessions/${sessionId}/activities/${activityId}/students/${enrollmentId}`,
       data,
     );
   },

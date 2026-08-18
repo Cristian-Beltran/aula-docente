@@ -127,14 +127,30 @@
                   autogrow
                   label="Contenido resumido"
                 />
-                <q-btn
-                  color="primary"
-                  unelevated
-                  icon="save"
-                  label="Guardar bitácora"
-                  :loading="savingLog"
-                  @click="saveSessionLog"
-                />
+                <div class="row q-col-gutter-sm">
+                  <div class="col-12 col-sm-6">
+                    <q-btn
+                      color="primary"
+                      unelevated
+                      icon="save"
+                      class="full-width"
+                      label="Guardar bitácora"
+                      :loading="savingLog"
+                      @click="saveSessionLog"
+                    />
+                  </div>
+                  <div class="col-12 col-sm-6">
+                    <q-btn
+                      color="secondary"
+                      unelevated
+                      icon="auto_awesome"
+                      class="full-width"
+                      label="Mejorar"
+                      :loading="improvingLog"
+                      @click="improveSessionLog"
+                    />
+                  </div>
+                </div>
               </div>
             </q-card-section>
           </q-card>
@@ -227,7 +243,18 @@
                     </td>
                     <td>{{ formatAttendance(row.attendanceStatus) }}</td>
                     <td v-for="cell in row.activities" :key="cell.activityId">
-                      {{ formatActivityValue(cell.gradingMode, cell.value) }}
+                      <div class="session-board__cell">
+                        <span>{{ formatActivityValue(cell.gradingMode, cell.value) }}</span>
+                        <q-btn
+                          flat
+                          round
+                          dense
+                          size="sm"
+                          color="primary"
+                          icon="edit"
+                          @click="promptEditActivityResult(row, cell)"
+                        />
+                      </div>
                     </td>
                   </tr>
                 </tbody>
@@ -270,6 +297,7 @@ import type {
 import StatusChip from 'components/StatusChip.vue';
 import { teacherWorkflowService } from 'src/services/teacher-workflow.service';
 import { useTeacherWorkflowStore } from 'stores/teacher-workflow';
+import { formatSessionRange } from 'src/utils/session-datetime';
 
 const route = useRoute();
 const router = useRouter();
@@ -277,6 +305,7 @@ const workflow = useTeacherWorkflowStore();
 const $q = useQuasar();
 const loading = ref(true);
 const savingLog = ref(false);
+const improvingLog = ref(false);
 const session = ref<ClassSession | null>(null);
 const rosterItems = ref<WorkflowRosterItem[]>([]);
 const activities = ref<Activity[]>([]);
@@ -294,15 +323,7 @@ function sessionLabel(current: ClassSession) {
 }
 
 function timeRange(current: ClassSession, withDate = false) {
-  const start = new Date(current.startsAt).toLocaleString('es-BO', {
-    ...(withDate ? { weekday: 'short', day: '2-digit', month: 'short' } : {}),
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-  const end = current.endsAt
-    ? new Date(current.endsAt).toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit' })
-    : '';
-  return end ? `${start} - ${end}` : start;
+  return formatSessionRange(current, withDate);
 }
 
 function partialClass(n?: number) {
@@ -386,6 +407,28 @@ async function saveSessionLog() {
   }
 }
 
+async function improveSessionLog() {
+  if (!session.value) return;
+  improvingLog.value = true;
+  try {
+    const { data } = await teacherWorkflowService.improveSessionLog(session.value.id, logForm.value);
+    session.value = { ...session.value, ...data };
+    syncWorkflowSession(session.value);
+    logForm.value = {
+      logTopic: data.logTopic || '',
+      logContent: data.logContent || '',
+    };
+    $q.notify({ type: 'positive', message: 'Bitácora mejorada y guardada.' });
+  } catch (error: any) {
+    $q.notify({
+      type: 'negative',
+      message: error?.response?.data?.message || 'No se pudo mejorar la bitácora.',
+    });
+  } finally {
+    improvingLog.value = false;
+  }
+}
+
 function formatAttendance(status: AttendanceStatus | null) {
   if (!status) return 'Pendiente';
   return {
@@ -402,6 +445,47 @@ function formatActivityValue(gradingMode: string, value: number | null) {
     return value ? `${value} firmas` : '0 firmas';
   }
   return value === null ? 'Sin nota' : value.toFixed(0);
+}
+
+function promptEditActivityResult(row: WorkflowSessionBoardRow, cell: WorkflowSessionBoardRow['activities'][number]) {
+  if (!session.value) return;
+  const activity = activities.value.find((item) => item.id === cell.activityId);
+  if (!activity) return;
+
+  const isSignatures = cell.gradingMode === 'SIGNATURES';
+  const title = isSignatures ? 'Editar firmas' : 'Editar nota';
+  const label = isSignatures
+    ? `Firmas para ${row.fullName}`
+    : `Nota para ${row.fullName}`;
+  const message = isSignatures
+    ? `${activity.title} · máximo ${activity.maxSignatures}`
+    : `${activity.title} · valor entre 0 y 100`;
+  const initialValue = cell.value === null ? '' : String(cell.value);
+
+  $q.dialog({
+    title,
+    message,
+    prompt: {
+      model: initialValue,
+      type: 'number',
+      label,
+    },
+    cancel: true,
+    ok: { label: 'Guardar' },
+  }).onOk(async (value) => {
+    try {
+      await teacherWorkflowService.updateStudentActivityResult(session.value!.id, cell.activityId, row.enrollmentId, {
+        value: Number(value || 0),
+      });
+      await loadSessionDetail(session.value!.id);
+      $q.notify({ type: 'positive', message: 'Resultado actualizado.' });
+    } catch (error: any) {
+      $q.notify({
+        type: 'negative',
+        message: error?.response?.data?.message || 'No se pudo actualizar el resultado.',
+      });
+    }
+  });
 }
 
 function promptCreateActivity() {
@@ -561,6 +645,14 @@ onMounted(() => {
   color: #5b6472;
   font-weight: 700;
   white-space: nowrap;
+}
+
+.session-board__cell {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 118px;
 }
 
 @media (min-width: 1024px) {

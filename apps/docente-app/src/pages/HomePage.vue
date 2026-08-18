@@ -149,6 +149,7 @@
 import { computed, onMounted, ref } from 'vue';
 import type { ClassSession } from 'src/services/types';
 import { useTeacherWorkflowStore } from 'stores/teacher-workflow';
+import { formatSessionDate, formatSessionTime } from 'src/utils/session-datetime';
 
 function toMonday(date: Date): string {
   const d = new Date(date);
@@ -179,13 +180,11 @@ function sessionLabel(session: ClassSession) {
 }
 
 function sessionMeta(session: ClassSession) {
-  const start = new Date(session.startsAt).toLocaleString('es-BO', {
+  const start = `${formatSessionDate(session.sessionDate, 'es-BO', {
     weekday: 'short',
     day: '2-digit',
     month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  })} ${formatSessionTime(session.startsAt)}`;
   const group = session.classGroup ? ` · ${session.classGroup.name}` : '';
   return `${start}${group}`;
 }

@@ -225,6 +225,15 @@ export class TeacherWorkflowController {
     return this.service.updateSessionLog(sessionId, body);
   }
 
+  @Post('sessions/:sessionId/log/improve')
+  improveSessionLog(
+    @Param('sessionId') sessionId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() body: any,
+  ) {
+    return this.service.improveSessionLog(sessionId, body, user.id);
+  }
+
   @Post('sessions/:sessionId/complete')
   completeSession(
     @Param('sessionId') sessionId: string,
@@ -270,5 +279,16 @@ export class TeacherWorkflowController {
     @Body() body: any,
   ) {
     return this.service.scanActivity(activityId, body, user.id);
+  }
+
+  @Patch('sessions/:sessionId/activities/:activityId/students/:enrollmentId')
+  updateStudentActivityResult(
+    @Param('sessionId') sessionId: string,
+    @Param('activityId') activityId: string,
+    @Param('enrollmentId') enrollmentId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() body: any,
+  ) {
+    return this.service.updateStudentActivityResult(sessionId, activityId, enrollmentId, body, user.id);
   }
 }

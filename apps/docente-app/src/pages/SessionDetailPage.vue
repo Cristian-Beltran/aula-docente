@@ -4,7 +4,7 @@
       <section class="app-page-head">
         <div>
           <h1 class="app-page-title">{{ session.topicTaught || session.label || 'Clase' }}</h1>
-          <p class="app-page-subtitle">{{ formatDate(session.startsAt) }} · {{ formatTime(session.startsAt) }} – {{ formatTime(session.endsAt) }}</p>
+          <p class="app-page-subtitle">{{ formatDate(session.sessionDate) }} · {{ formatTime(session.startsAt) }} – {{ formatTime(session.endsAt) }}</p>
         </div>
         <div class="row items-center q-gutter-sm">
           <q-btn-dropdown
@@ -74,14 +74,30 @@
               label="Contenido resumido"
               placeholder="Ej: conceptos repasados, ejercicios, acuerdos o tareas"
             />
-            <q-btn
-              color="primary"
-              unelevated
-              icon="save"
-              label="Guardar bitácora"
-              :loading="savingLog"
-              @click="saveSessionLog"
-            />
+            <div class="row q-col-gutter-sm">
+              <div class="col-12 col-sm-6">
+                <q-btn
+                  color="primary"
+                  unelevated
+                  icon="save"
+                  class="full-width"
+                  label="Guardar bitácora"
+                  :loading="savingLog"
+                  @click="saveSessionLog"
+                />
+              </div>
+              <div class="col-12 col-sm-6">
+                <q-btn
+                  color="secondary"
+                  unelevated
+                  icon="auto_awesome"
+                  class="full-width"
+                  label="Mejorar"
+                  :loading="improvingLog"
+                  @click="improveSessionLog"
+                />
+              </div>
+            </div>
           </div>
         </q-card-section>
       </q-card>
@@ -191,7 +207,18 @@
                   </td>
                   <td>{{ formatAttendance(row.attendanceStatus) }}</td>
                   <td v-for="cell in row.activities" :key="cell.activityId">
-                    {{ formatActivityValue(cell.gradingMode, cell.value) }}
+                    <div class="session-board__cell">
+                      <span>{{ formatActivityValue(cell.gradingMode, cell.value) }}</span>
+                      <q-btn
+                        flat
+                        round
+                        dense
+                        size="sm"
+                        color="primary"
+                        icon="edit"
+                        @click="promptEditActivityResult(row, cell)"
+                      />
+                    </div>
                   </td>
                 </tr>
               </tbody>
@@ -246,6 +273,7 @@ import type { Activity, AttendanceStatus, WorkflowRosterItem, WorkflowSessionBoa
 import { teacherWorkflowService } from 'src/services/teacher-workflow.service';
 import { useTeacherWorkflowStore } from 'stores/teacher-workflow';
 import StatusChip from 'components/StatusChip.vue';
+import { formatSessionDate, formatSessionTime } from 'src/utils/session-datetime';
 
 const route = useRoute();
 const router = useRouter();
@@ -260,6 +288,7 @@ const loading = ref(true);
 const completing = ref(false);
 const opening = ref(false);
 const savingLog = ref(false);
+const improvingLog = ref(false);
 const changingPartial = ref(false);
 const logForm = ref({ logTopic: '', logContent: '' });
 const canManageActivities = computed(() => ['PLANNED', 'OPEN'].includes(session.value?.status || ''));
@@ -269,14 +298,12 @@ const attendanceStats = computed(() => {
   return { registered };
 });
 
-function formatDate(dateStr: string) {
-  if (!dateStr) return '';
-  return new Date(dateStr).toLocaleDateString('es-EC', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+function formatDate(sessionDate: string) {
+  return formatSessionDate(sessionDate, 'es-BO');
 }
 
 function formatTime(dateStr: string) {
-  if (!dateStr) return '';
-  return new Date(dateStr).toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit' });
+  return formatSessionTime(dateStr);
 }
 
 function partialColor(n?: number) {
@@ -336,6 +363,26 @@ async function saveSessionLog() {
   }
 }
 
+async function improveSessionLog() {
+  improvingLog.value = true;
+  try {
+    const { data } = await teacherWorkflowService.improveSessionLog(sessionId.value, logForm.value);
+    session.value = { ...session.value, ...data };
+    logForm.value = {
+      logTopic: data.logTopic || '',
+      logContent: data.logContent || '',
+    };
+    $q.notify({ type: 'positive', message: 'Bitácora mejorada y guardada.' });
+  } catch (error: any) {
+    $q.notify({
+      type: 'negative',
+      message: error?.response?.data?.message || 'No se pudo mejorar la bitácora.',
+    });
+  } finally {
+    improvingLog.value = false;
+  }
+}
+
 function formatAttendance(status: AttendanceStatus | null) {
   if (!status) return 'Pendiente';
   return {
@@ -352,6 +399,44 @@ function formatActivityValue(gradingMode: string, value: number | null) {
     return value ? `${value} firmas` : '0 firmas';
   }
   return value === null ? 'Sin nota' : value.toFixed(0);
+}
+
+function promptEditActivityResult(row: WorkflowSessionBoardRow, cell: WorkflowSessionBoardRow['activities'][number]) {
+  const activity = activities.value.find((item) => item.id === cell.activityId);
+  if (!activity) return;
+
+  const isSignatures = cell.gradingMode === 'SIGNATURES';
+  const title = isSignatures ? 'Editar firmas' : 'Editar nota';
+  const label = isSignatures ? `Firmas para ${row.fullName}` : `Nota para ${row.fullName}`;
+  const message = isSignatures
+    ? `${activity.title} · máximo ${activity.maxSignatures}`
+    : `${activity.title} · valor entre 0 y 100`;
+  const initialValue = cell.value === null ? '' : String(cell.value);
+
+  $q.dialog({
+    title,
+    message,
+    prompt: {
+      model: initialValue,
+      type: 'number',
+      label,
+    },
+    cancel: true,
+    ok: { label: 'Guardar' },
+  }).onOk(async (value) => {
+    try {
+      await teacherWorkflowService.updateStudentActivityResult(sessionId.value, cell.activityId, row.enrollmentId, {
+        value: Number(value || 0),
+      });
+      await load();
+      $q.notify({ type: 'positive', message: 'Resultado actualizado.' });
+    } catch (error: any) {
+      $q.notify({
+        type: 'negative',
+        message: error?.response?.data?.message || 'No se pudo actualizar el resultado.',
+      });
+    }
+  });
 }
 
 async function startSession() {
@@ -519,5 +604,13 @@ onMounted(() => {
   color: #5b6472;
   font-weight: 700;
   white-space: nowrap;
+}
+
+.session-board__cell {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 118px;
 }
 </style>
