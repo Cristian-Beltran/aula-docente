@@ -104,23 +104,24 @@
                       </q-item-label>
                     </q-item-section>
                     <q-item-section side>
-                      <div class="app-chip" :class="partialClass(session.partialNumber)">
-                        P{{ session.partialNumber || 1 }}
-                      </div>
-                      <q-btn
-                        v-if="session.status === 'PLANNED'"
-                        color="primary"
-                        flat
-                        label="Ver clase"
-                        :to="{ name: 'session-detail', params: { sessionId: session.id } }"
-                      />
-                      <q-btn
-                        v-else-if="session.status === 'OPEN'"
-                        color="primary"
-                        flat
-                        label="Continuar"
-                        :to="{ name: 'current-class' }"
-                      />
+                      <div class="column items-end">
+                        <div class="app-chip" :class="partialClass(session.partialNumber)">
+                          P{{ session.partialNumber || 1 }}
+                        </div>
+                        <q-btn
+                          v-if="session.status === 'PLANNED'"
+                          color="primary"
+                          flat
+                          label="Ver clase"
+                          :to="{ name: 'session-detail', params: { sessionId: session.id } }"
+                        />
+                        <q-btn
+                          v-else-if="session.status === 'OPEN'"
+                          color="primary"
+                          flat
+                          label="Continuar"
+                          :to="{ name: 'current-class' }"
+                        />
                       <q-btn
                         v-else
                         color="primary"
@@ -128,6 +129,21 @@
                         label="Ver clase"
                         :to="{ name: 'session-detail', params: { sessionId: session.id } }"
                       />
+                      <q-btn
+                        v-if="session.status === 'COMPLETED'"
+                        color="primary"
+                        flat
+                        label="Editar asistencia"
+                        :to="{ name: 'session-attendance', params: { sessionId: session.id } }"
+                      />
+                      <q-btn
+                        v-if="session.status === 'PLANNED'"
+                        color="grey-7"
+                        flat
+                          label="Feriado"
+                          @click="markHoliday(session)"
+                        />
+                      </div>
                       <div class="text-caption text-grey-7 q-mt-xs text-right">{{ statusText(session.status) }}</div>
                     </q-item-section>
                   </q-item>
@@ -147,6 +163,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
+import { useQuasar } from 'quasar';
 import type { ClassSession } from 'src/services/types';
 import { useTeacherWorkflowStore } from 'stores/teacher-workflow';
 import { formatSessionDate, formatSessionTime } from 'src/utils/session-datetime';
@@ -165,6 +182,7 @@ function todayStr(): string {
 }
 
 const workflow = useTeacherWorkflowStore();
+const $q = useQuasar();
 const selectedDate = ref(toMonday(new Date()));
 
 const weekRange = computed(() => {
@@ -243,6 +261,26 @@ function moveWeek(days: number) {
 function goToCurrentWeek() {
   selectedDate.value = toMonday(new Date());
   void workflow.fetchWeek(selectedDate.value);
+}
+
+function markHoliday(session: ClassSession) {
+  $q.dialog({
+    title: 'Marcar como feriado',
+    message: 'La clase dejará de estar tentativa y ya no aparecerá como próxima clase.',
+    cancel: true,
+    ok: { label: 'Confirmar', color: 'primary' },
+  }).onOk(async () => {
+    try {
+      await workflow.cancelSession(session.id);
+      await workflow.fetchWeek(selectedDate.value);
+      $q.notify({ type: 'positive', message: 'Clase marcada como feriado.' });
+    } catch (error: any) {
+      $q.notify({
+        type: 'negative',
+        message: error?.response?.data?.message || 'No se pudo marcar la clase como feriado.',
+      });
+    }
+  });
 }
 
 onMounted(() => {

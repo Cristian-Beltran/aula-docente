@@ -24,6 +24,18 @@
               <q-icon name="chevron_right" />
             </q-item-section>
           </q-item>
+          <q-item clickable :to="{ name: 'course-summary', params: { id: courseId } }" class="rounded-borders bg-amber-1 q-mt-sm">
+            <q-item-section avatar>
+              <q-icon name="grid_view" size="28px" color="warning" />
+            </q-item-section>
+            <q-item-section>
+              <q-item-label class="text-weight-bold">Ver resumen</q-item-label>
+              <q-item-label caption>Asistencia y actividades por clase en formato compacto</q-item-label>
+            </q-item-section>
+            <q-item-section side>
+              <q-icon name="chevron_right" />
+            </q-item-section>
+          </q-item>
         </q-card-section>
       </q-card>
 

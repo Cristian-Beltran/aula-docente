@@ -50,19 +50,15 @@
             </div>
           </div>
           <div class="row q-col-gutter-sm">
-            <div class="col-3 text-center">
+            <div class="col-4 text-center">
               <div class="text-h5 text-weight-bold text-positive">{{ reportsStore.summary.attendance.present }}</div>
               <div class="text-caption text-grey-7">Presentes</div>
             </div>
-            <div class="col-3 text-center">
-              <div class="text-h5 text-weight-bold text-warning">{{ reportsStore.summary.attendance.late }}</div>
-              <div class="text-caption text-grey-7">Tarde</div>
-            </div>
-            <div class="col-3 text-center">
+            <div class="col-4 text-center">
               <div class="text-h5 text-weight-bold text-negative">{{ reportsStore.summary.attendance.absent }}</div>
               <div class="text-caption text-grey-7">Ausentes</div>
             </div>
-            <div class="col-3 text-center">
+            <div class="col-4 text-center">
               <div class="text-h5 text-weight-bold text-info">{{ reportsStore.summary.attendance.justified }}</div>
               <div class="text-caption text-grey-7">Justificados</div>
             </div>
@@ -107,7 +103,7 @@
             <div class="app-page-head q-mb-sm">
               <div>
                 <h2 class="app-page-title" style="font-size: 1.05rem;">Estudiantes en riesgo</h2>
-                <p class="app-page-subtitle">Ordenados por ausencias y retrasos.</p>
+                <p class="app-page-subtitle">Solo estudiantes con faltas acumuladas.</p>
               </div>
             </div>
             <div v-if="reportsStore.loadingRisk" class="app-empty q-py-md">
@@ -121,11 +117,10 @@
                 <q-item v-for="student in reportsStore.riskStudents" :key="student.enrollmentId">
                   <q-item-section>
                     <q-item-label>{{ student.studentFullName || `${student.firstName || ''} ${student.lastName || ''}`.trim() || student.studentCode }}</q-item-label>
-                    <q-item-label caption>{{ student.studentCode }}</q-item-label>
+                    <q-item-label caption>{{ selectedCourseLabel }} · {{ student.studentCode }}</q-item-label>
                   </q-item-section>
                   <q-item-section side top>
                     <div class="text-caption text-negative q-mb-xs">{{ student.absences }} faltas</div>
-                    <div class="text-caption text-warning">{{ student.lates }} retrasos</div>
                   </q-item-section>
                 </q-item>
               </q-list>
@@ -160,6 +155,11 @@ const selectedCourseIdModel = computed({
       void loadReports(value);
     }
   },
+});
+
+const selectedCourseLabel = computed(() => {
+  const course = coursesStore.items.find((item) => item.id === coursesStore.selectedCourseId);
+  return `${course?.subject?.name || course?.displayName || 'Curso'} · Paralelo ${course?.parallel || ''}`.trim();
 });
 
 async function loadReports(courseId?: string) {

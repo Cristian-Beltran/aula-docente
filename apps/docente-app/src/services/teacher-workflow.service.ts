@@ -141,6 +141,10 @@ export const teacherWorkflowService = {
     return api.post<ClassSession>(`/teacher-workflow/sessions/${sessionId}/open`);
   },
 
+  cancelSession(sessionId: string) {
+    return api.post<ClassSession>(`/teacher-workflow/sessions/${sessionId}/cancel`);
+  },
+
   getRoster(sessionId: string) {
     return api.get<WorkflowRoster>(`/teacher-workflow/sessions/${sessionId}/roster`);
   },

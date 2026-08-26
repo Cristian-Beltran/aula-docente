@@ -201,6 +201,11 @@ export class TeacherWorkflowController {
     return this.service.openSession(sessionId, user.id);
   }
 
+  @Post('sessions/:sessionId/cancel')
+  cancelSession(@Param('sessionId') sessionId: string) {
+    return this.service.cancelSession(sessionId);
+  }
+
   @Get('sessions/:sessionId/roster')
   getRoster(@Param('sessionId') sessionId: string) {
     return this.service.getSessionRoster(sessionId);

@@ -849,6 +849,17 @@ export class TeacherWorkflowService {
     return this.serializeSession(savedSession);
   }
 
+  async cancelSession(sessionId: string) {
+    const session = await this.sessionRepository.findOne({ where: { id: sessionId } });
+    if (!session) throw new NotFoundException('Sesión no encontrada');
+    if (session.status !== SessionStatus.PLANNED) {
+      throw new ConflictException('Solo se pueden marcar como feriado las sesiones tentativas');
+    }
+
+    session.status = SessionStatus.CANCELED;
+    return this.serializeSession(await this.sessionRepository.save(session));
+  }
+
   async getSessionRoster(sessionId: string) {
     const session = await this.sessionRepository.findOne({ where: { id: sessionId } });
     if (!session) throw new NotFoundException('Sesión no encontrada');
@@ -921,8 +932,8 @@ export class TeacherWorkflowService {
   async registerAttendance(sessionId: string, body: any, userId: string) {
     const session = await this.sessionRepository.findOne({ where: { id: sessionId } });
     if (!session) throw new NotFoundException('Sesión no encontrada');
-    if (session.status !== SessionStatus.OPEN) {
-      throw new ConflictException('La sesión no está abierta');
+    if (![SessionStatus.OPEN, SessionStatus.CLOSED].includes(session.status)) {
+      throw new ConflictException('Solo se puede editar asistencia en sesiones abiertas o ya tomadas');
     }
 
     const status = body.status as AttendanceStatus;
@@ -1690,7 +1701,7 @@ export class TeacherWorkflowService {
     const currentTime = fromDate.getTime();
     const currentDateOnly = this.toDateOnly(fromDate);
     const available = sessions.filter(
-      (session) => session.id !== skipSessionId && session.status !== 'COMPLETED',
+      (session) => session.id !== skipSessionId && !['COMPLETED', 'CANCELED'].includes(session.status),
     );
     const sameDay = available.filter((session) => session.sessionDate === currentDateOnly);
     if (sameDay.length > 0) {
@@ -1704,9 +1715,9 @@ export class TeacherWorkflowService {
   private isSessionVisible(session: { startsAt: string | Date; status: string; sessionDate?: string }, anchorDate: Date) {
     if (session.status === 'OPEN') return true;
     if (session.sessionDate === this.toDateOnly(anchorDate)) {
-      return session.status !== 'COMPLETED';
+      return !['COMPLETED', 'CANCELED'].includes(session.status);
     }
-    return new Date(session.startsAt).getTime() >= anchorDate.getTime();
+    return session.status !== 'CANCELED' && new Date(session.startsAt).getTime() >= anchorDate.getTime();
   }
 
   private coerceDateOnly(value: string | Date) {

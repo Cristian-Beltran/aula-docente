@@ -54,6 +54,12 @@ export class ReportsController {
     return this.service.getRiskStudents(courseId, query);
   }
 
+  @Get('courses/:courseId/mobile-summary')
+  @UseGuards(CourseOwnerGuard)
+  getMobileSummary(@Param('courseId') courseId: string) {
+    return this.service.getMobileSummary(courseId);
+  }
+
   @Get('courses/:courseId/exceptions')
   @UseGuards(CourseOwnerGuard)
   getCourseExceptions(@Param('courseId') courseId: string, @Query() query: PaginationQueryDto) {

@@ -78,6 +78,11 @@ export const useTeacherWorkflowStore = defineStore('teacher-workflow', () => {
     return data;
   }
 
+  async function cancelSession(sessionId: string) {
+    const { data } = await teacherWorkflowService.cancelSession(sessionId);
+    return data;
+  }
+
   async function markAttendance(
     sessionId: string,
     enrollmentId: string,
@@ -156,6 +161,7 @@ export const useTeacherWorkflowStore = defineStore('teacher-workflow', () => {
     fetchRoster,
     fetchActivities,
     openSession,
+    cancelSession,
     markAttendance,
     completeSession,
     createActivity,

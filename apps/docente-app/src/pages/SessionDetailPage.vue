@@ -172,7 +172,7 @@
         </q-card-section>
       </q-card>
 
-      <q-card v-if="session.status !== 'COMPLETED' && session.status !== 'CLOSED'" class="app-surface">
+      <q-card v-if="canCompleteSession" class="app-surface">
         <q-card-section>
           <q-btn
             color="positive"
@@ -191,6 +191,14 @@
           <q-icon name="task_alt" size="32px" color="positive" class="q-mb-sm" />
           <div class="text-weight-bold text-positive">Esta clase ya fue tomada</div>
           <div class="text-caption text-grey-7 q-mt-xs">No se puede modificar ni eliminar porque ya concluyó.</div>
+        </q-card-section>
+      </q-card>
+
+      <q-card v-if="session.status === 'CANCELED'" class="app-surface">
+        <q-card-section class="text-center">
+          <q-icon name="event_busy" size="32px" color="grey-7" class="q-mb-sm" />
+          <div class="text-weight-bold text-grey-8">Esta clase fue marcada como feriado</div>
+          <div class="text-caption text-grey-7 q-mt-xs">Ya no aparece como clase tentativa ni como próxima clase.</div>
         </q-card-section>
       </q-card>
     </div>
@@ -234,6 +242,7 @@ const improvingLog = ref(false);
 const changingPartial = ref(false);
 const logForm = ref({ logTopic: '', logContent: '' });
 const canManageActivities = computed(() => ['PLANNED', 'OPEN'].includes(session.value?.status || ''));
+const canCompleteSession = computed(() => ['PLANNED', 'OPEN'].includes(session.value?.status || ''));
 
 const attendanceStats = computed(() => {
   const registered = rosterItems.value.filter((r) => r.status && r.status !== 'PENDING').length;

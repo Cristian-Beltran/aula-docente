@@ -380,3 +380,51 @@ export interface RiskStudent {
   lates: number;
   signatures: number;
 }
+
+export interface CourseMobileSummarySessionActivity {
+  id: string;
+  title: string;
+  gradingMode: ActivityGradingMode;
+}
+
+export interface CourseMobileSummarySession {
+  id: string;
+  sessionDate: string;
+  startsAt: string;
+  status: SessionStatus;
+  partialNumber: number;
+  activities: CourseMobileSummarySessionActivity[];
+}
+
+export interface CourseMobileSummaryStudentSession {
+  sessionId: string;
+  attendance: string;
+  activities: Array<{
+    activityId: string;
+    title: string;
+    gradingMode: ActivityGradingMode;
+    value: number | null;
+  }>;
+}
+
+export interface CourseMobileSummaryStudent {
+  enrollmentId: string;
+  studentCode: string;
+  fullName: string;
+  totals: {
+    present: number;
+    absent: number;
+    justified: number;
+  };
+  sessions: CourseMobileSummaryStudentSession[];
+}
+
+export interface CourseMobileSummary {
+  course: {
+    id: string;
+    name: string;
+    parallel: string;
+  } | null;
+  sessions: CourseMobileSummarySession[];
+  students: CourseMobileSummaryStudent[];
+}

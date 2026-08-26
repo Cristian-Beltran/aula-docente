@@ -8,6 +8,7 @@ import type {
   AttendanceRecord,
   RiskStudent,
   ExceptionRequest,
+  CourseMobileSummary,
 } from './types';
 
 function buildParams(params?: PaginationParams): Record<string, string | number> {
@@ -51,6 +52,10 @@ export const reportsService = {
       `/reports/courses/${courseId}/risk-students`,
       { params: buildParams(params) },
     );
+  },
+
+  getMobileSummary(courseId: string) {
+    return api.get<CourseMobileSummary>(`/reports/courses/${courseId}/mobile-summary`);
   },
 
   getCourseExceptions(courseId: string, params?: PaginationParams) {

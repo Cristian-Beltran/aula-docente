@@ -26,6 +26,7 @@
               <p class="app-list-card__meta">{{ counted.justified }} justificadas · {{ items.length }} esperados</p>
             </div>
             <q-btn
+              v-if="canCompleteSession"
               flat
               color="negative"
               icon="task_alt"
@@ -134,10 +135,12 @@ const editIndex = ref<number | null>(null);
 
 const roster = computed(() => workflow.roster);
 const items = computed(() => roster.value?.items || []);
+const sessionStatus = computed(() => roster.value?.session.status || '');
 const activeIndex = computed(() => editIndex.value ?? currentIndex.value);
 const currentStudent = computed(() => items.value[activeIndex.value] || null);
 const isEditingSingleStudent = computed(() => editIndex.value !== null);
 const isSequentialMode = computed(() => !isEditingSingleStudent.value);
+const canCompleteSession = computed(() => sessionStatus.value === 'OPEN');
 const headerLabel = computed(() =>
   isEditingSingleStudent.value ? 'Editar' : `${currentIndex.value + 1}/${items.value.length}`,
 );
