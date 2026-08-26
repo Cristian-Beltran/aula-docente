@@ -116,7 +116,7 @@
               <q-list separator>
                 <q-item v-for="student in reportsStore.riskStudents" :key="student.enrollmentId">
                   <q-item-section>
-                    <q-item-label>{{ student.studentFullName || `${student.firstName || ''} ${student.lastName || ''}`.trim() || student.studentCode }}</q-item-label>
+                    <q-item-label>{{ riskStudentName(student) }}</q-item-label>
                     <q-item-label caption>{{ selectedCourseLabel }} · {{ student.studentCode }}</q-item-label>
                   </q-item-section>
                   <q-item-section side top>
@@ -136,6 +136,7 @@
 import { computed, onMounted } from 'vue';
 import { useCoursesStore } from 'stores/courses';
 import { useReportsStore } from 'stores/reports';
+import type { RiskStudent } from 'src/services/types';
 
 const coursesStore = useCoursesStore();
 const reportsStore = useReportsStore();
@@ -171,6 +172,14 @@ async function loadReports(courseId?: string) {
     coursesStore.fetchCourseDetail(targetCourseId),
     reportsStore.hydrateCourseDashboard(targetCourseId),
   ]);
+}
+
+function riskStudentName(student: RiskStudent) {
+  return (
+    student.studentFullName?.trim()
+    || [student.firstName, student.lastName].filter(Boolean).join(' ').trim()
+    || student.studentCode
+  );
 }
 
 onMounted(async () => {

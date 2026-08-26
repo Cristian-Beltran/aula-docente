@@ -177,6 +177,7 @@ export class ReportsService {
   async getRiskStudents(courseId: string, query: PaginationQueryDto) {
     const page = query.page ?? 1;
     const pageSize = query.pageSize ?? 20;
+    const absenceExpr = `COUNT(DISTINCT attendance.id) FILTER (WHERE attendance.effective_status = '${AttendanceStatus.ABSENT}')`;
     const baseQuery = this.enrollmentRepository
       .createQueryBuilder('enrollment')
       .leftJoin('enrollment.student', 'student')
@@ -195,11 +196,12 @@ export class ReportsService {
         'student.full_name AS studentFullName',
         'student.first_name AS firstName',
         'student.last_name AS lastName',
-        `COUNT(DISTINCT attendance.id) FILTER (WHERE attendance.effective_status = '${AttendanceStatus.ABSENT}') AS absences`,
+        `${absenceExpr} AS absences`,
         'COALESCE(SUM(signature.quantity), 0) AS signatures',
       ])
       .groupBy('enrollment.id')
-      .addGroupBy('student.id');
+      .addGroupBy('student.id')
+      .having(`${absenceExpr} > 0`);
 
     if (query.search) {
       baseQuery.andWhere(
@@ -210,7 +212,8 @@ export class ReportsService {
 
     const countResult = await this.enrollmentRepository
       .createQueryBuilder('enrollment')
-      .select('COUNT(DISTINCT enrollment.id)', 'total')
+      .leftJoin('attendance_records', 'attendance', 'attendance.enrollment_id = enrollment.id')
+      .select(`COUNT(DISTINCT enrollment.id) FILTER (WHERE attendance.effective_status = '${AttendanceStatus.ABSENT}')`, 'total')
       .leftJoin('enrollment.student', 'student')
       .where('enrollment.course_id = :courseId', { courseId })
       .andWhere('enrollment.status = :status', { status: EnrollmentStatus.ACTIVE })
@@ -224,7 +227,17 @@ export class ReportsService {
       .getRawMany();
 
     return {
-      items: items.filter((item) => Number(item.absences ?? 0) > 0),
+      items: items.map((item) => ({
+        enrollmentId: item.enrollmentId ?? item.enrollmentid,
+        studentId: item.studentId ?? item.studentid,
+        studentCode: item.studentCode ?? item.studentcode,
+        studentFullName: item.studentFullName ?? item.studentfullname,
+        firstName: item.firstName ?? item.firstname ?? '',
+        lastName: item.lastName ?? item.lastname ?? '',
+        absences: Number(item.absences ?? 0),
+        lates: 0,
+        signatures: Number(item.signatures ?? 0),
+      })),
       meta: buildPaginationMeta(page, pageSize, total),
     };
   }
@@ -302,7 +315,7 @@ export class ReportsService {
     }
 
     const sessionRows = sessions
-      .filter((session) => session.status !== 'CANCELED')
+      .filter((session) => session.status === 'CLOSED')
       .map((session) => ({
         id: session.id,
         sessionDate: session.sessionDate,

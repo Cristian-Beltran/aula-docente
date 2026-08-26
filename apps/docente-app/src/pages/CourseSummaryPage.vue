@@ -4,7 +4,9 @@
       <section class="app-page-head">
         <div>
           <h1 class="app-page-title">Resumen del curso</h1>
-          <p class="app-page-subtitle">{{ summary?.course ? `${summary.course.name} · Paralelo ${summary.course.parallel}` : 'Cargando resumen...' }}</p>
+          <p class="app-page-subtitle">
+            {{ summary?.course ? `${summary.course.name} · Paralelo ${summary.course.parallel}` : 'Cargando resumen...' }}
+          </p>
         </div>
       </section>
 
@@ -15,80 +17,82 @@
         </q-card-section>
       </q-card>
 
-      <template v-else-if="summary">
+      <q-card v-else-if="!summary || summary.sessions.length === 0" class="app-surface">
+        <q-card-section class="app-empty">
+          <div class="app-empty__icon"><q-icon name="table_chart" size="28px" /></div>
+          <div>No hay clases terminadas para resumir todavía.</div>
+        </q-card-section>
+      </q-card>
+
+      <template v-else>
         <q-card class="app-surface">
           <q-card-section>
             <div class="app-page-head q-mb-sm">
               <div>
-                <h2 class="app-page-title" style="font-size:1.05rem;">Clases del curso</h2>
-                <p class="app-page-subtitle">{{ summary.sessions.length }} bloques con asistencia y actividades</p>
+                <h2 class="app-page-title" style="font-size:1.05rem;">Tabla de seguimiento</h2>
+                <p class="app-page-subtitle">{{ summary.students.length }} estudiantes · {{ summary.sessions.length }} clases terminadas</p>
               </div>
             </div>
 
-            <div class="summary-session-strip">
-              <div v-for="session in summary.sessions" :key="session.id" class="summary-session-pill">
-                <div class="summary-session-pill__date">{{ formatShortDate(session.sessionDate) }}</div>
-                <div class="summary-session-pill__meta">
-                  <span>P{{ session.partialNumber }}</span>
-                  <span>{{ formatTime(session.startsAt) }}</span>
-                </div>
-                <div class="summary-session-pill__count">
-                  {{ session.activities.length }} {{ session.activities.length === 1 ? 'actividad' : 'actividades' }}
-                </div>
-              </div>
+            <div class="course-summary-table">
+              <table class="course-summary-table__grid">
+                <thead>
+                  <tr>
+                    <th class="course-summary-table__student-header">Estudiante</th>
+                    <th
+                      v-for="session in summary.sessions"
+                      :key="session.id"
+                      class="course-summary-table__session-header"
+                    >
+                      <div class="course-summary-table__session-date">{{ formatShortDate(session.sessionDate) }}</div>
+                      <div class="course-summary-table__session-meta">P{{ session.partialNumber }}</div>
+                    </th>
+                    <th class="course-summary-table__total-header">Totales</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="student in summary.students" :key="student.enrollmentId">
+                    <td class="course-summary-table__student-cell">
+                      <div class="course-summary-table__student-name">{{ student.fullName }}</div>
+                      <div class="course-summary-table__student-code">{{ student.studentCode }}</div>
+                    </td>
+
+                    <td
+                      v-for="session in summary.sessions"
+                      :key="`${student.enrollmentId}-${session.id}`"
+                      class="course-summary-table__session-cell"
+                    >
+                      <div
+                        class="course-summary-table__attendance"
+                        :class="attendanceClass(findStudentSession(student, session.id)?.attendance)"
+                      >
+                        {{ attendanceLabel(findStudentSession(student, session.id)?.attendance) }}
+                      </div>
+                      <div v-if="session.activities.length > 0" class="course-summary-table__activities">
+                        <div
+                          v-for="activity in session.activities"
+                          :key="activity.id"
+                          class="course-summary-table__activity"
+                        >
+                          <span class="course-summary-table__activity-title">{{ shortActivityTitle(activity.title) }}</span>
+                          <span class="course-summary-table__activity-value">
+                            {{ formatActivityValue(findActivityValue(student, session.id, activity.id), activity.gradingMode) }}
+                          </span>
+                        </div>
+                      </div>
+                    </td>
+
+                    <td class="course-summary-table__total-cell">
+                      <div class="course-summary-table__total course-summary-table__total--present">{{ student.totals.present }} P</div>
+                      <div class="course-summary-table__total course-summary-table__total--absent">{{ student.totals.absent }} A</div>
+                      <div class="course-summary-table__total course-summary-table__total--justified">{{ student.totals.justified }} J</div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </q-card-section>
         </q-card>
-
-        <div class="app-stack">
-          <q-card v-for="student in summary.students" :key="student.enrollmentId" class="app-surface">
-            <q-card-section>
-              <div class="summary-student-head">
-                <div>
-                  <div class="text-weight-bold">{{ student.fullName }}</div>
-                  <div class="text-caption text-grey-7">{{ student.studentCode }}</div>
-                </div>
-                <div class="summary-student-totals">
-                  <div class="summary-total summary-total--present">{{ student.totals.present }} P</div>
-                  <div class="summary-total summary-total--absent">{{ student.totals.absent }} A</div>
-                  <div class="summary-total summary-total--justified">{{ student.totals.justified }} J</div>
-                </div>
-              </div>
-
-              <div class="summary-student-sessions">
-                <div
-                  v-for="session in summary.sessions"
-                  :key="session.id"
-                  class="summary-session-card"
-                >
-                  <div class="summary-session-card__head">
-                    <div class="summary-session-card__date">{{ formatShortDate(session.sessionDate) }}</div>
-                    <div class="summary-attendance" :class="attendanceClass(findStudentSession(student, session.id)?.attendance)">
-                      {{ attendanceLabel(findStudentSession(student, session.id)?.attendance) }}
-                    </div>
-                  </div>
-
-                  <div v-if="session.activities.length === 0" class="text-caption text-grey-6">
-                    Sin actividades
-                  </div>
-
-                  <div v-else class="summary-activity-list">
-                    <div
-                      v-for="activity in session.activities"
-                      :key="activity.id"
-                      class="summary-activity-row"
-                    >
-                      <span class="summary-activity-row__title">{{ activity.title }}</span>
-                      <span class="summary-activity-row__value">
-                        {{ formatActivityValue(findActivityValue(student, session.id, activity.id), activity.gradingMode) }}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </q-card-section>
-          </q-card>
-        </div>
       </template>
     </div>
   </q-page>
@@ -100,7 +104,7 @@ import { useRoute } from 'vue-router';
 import { useQuasar } from 'quasar';
 import type { ActivityGradingMode, CourseMobileSummary, CourseMobileSummaryStudent } from 'src/services/types';
 import { reportsService } from 'src/services/reports.service';
-import { formatSessionDate, formatSessionTime } from 'src/utils/session-datetime';
+import { formatSessionDate } from 'src/utils/session-datetime';
 
 const route = useRoute();
 const $q = useQuasar();
@@ -109,10 +113,6 @@ const summary = ref<CourseMobileSummary | null>(null);
 
 function formatShortDate(date: string) {
   return formatSessionDate(date, 'es-BO', { day: '2-digit', month: 'short' });
-}
-
-function formatTime(date: string) {
-  return formatSessionTime(date);
 }
 
 function findStudentSession(student: CourseMobileSummaryStudent, sessionId: string) {
@@ -125,23 +125,27 @@ function findActivityValue(student: CourseMobileSummaryStudent, sessionId: strin
 
 function attendanceLabel(value?: string) {
   return {
-    P: 'Presente',
-    A: 'Falta',
-    J: 'Just.',
-  }[value || ''] || 'Pend.';
+    P: 'P',
+    A: 'A',
+    J: 'J',
+  }[value || ''] || '--';
 }
 
 function attendanceClass(value?: string) {
   return {
-    P: 'summary-attendance--present',
-    A: 'summary-attendance--absent',
-    J: 'summary-attendance--justified',
-  }[value || ''] || 'summary-attendance--pending';
+    P: 'course-summary-table__attendance--present',
+    A: 'course-summary-table__attendance--absent',
+    J: 'course-summary-table__attendance--justified',
+  }[value || ''] || 'course-summary-table__attendance--pending';
 }
 
 function formatActivityValue(value: number | null, gradingMode: ActivityGradingMode) {
   if (value === null) return '--';
   return gradingMode === 'SIGNATURES' ? `${value}f` : `${Number(value).toFixed(0)}`;
+}
+
+function shortActivityTitle(title: string) {
+  return title.length > 10 ? `${title.slice(0, 10)}…` : title;
 }
 
 async function load() {
@@ -165,157 +169,179 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.summary-session-strip {
-  display: flex;
-  gap: 10px;
-  overflow-x: auto;
-  padding-bottom: 4px;
-}
-
-.summary-session-pill {
-  min-width: 112px;
-  padding: 12px;
-  border-radius: 18px;
-  background: linear-gradient(180deg, #fff8e8, #f8f2e7);
-  border: 1px solid rgba(217, 119, 6, 0.14);
-}
-
-.summary-session-pill__date {
-  font-weight: 800;
-  color: #1f3c5a;
-}
-
-.summary-session-pill__meta,
-.summary-session-pill__count {
-  margin-top: 4px;
-  font-size: 0.75rem;
-  color: #6b7280;
-}
-
-.summary-session-pill__meta {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.summary-student-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.summary-student-totals {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-.summary-total {
-  padding: 4px 8px;
-  border-radius: 999px;
-  font-size: 0.72rem;
-  font-weight: 700;
-}
-
-.summary-total--present {
-  background: #e7f8ee;
-  color: #15803d;
-}
-
-.summary-total--absent {
-  background: #feecec;
-  color: #dc2626;
-}
-
-.summary-total--justified {
-  background: #e8f2ff;
-  color: #2563eb;
-}
-
-.summary-student-sessions {
-  display: flex;
-  gap: 10px;
-  overflow-x: auto;
-  margin-top: 14px;
-  padding-bottom: 4px;
-}
-
-.summary-session-card {
-  min-width: 188px;
-  max-width: 188px;
-  padding: 12px;
-  border-radius: 18px;
-  background: #fbfbfa;
+.course-summary-table {
+  overflow: auto;
   border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 18px;
 }
 
-.summary-session-card__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 10px;
+.course-summary-table__grid {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: #fff;
 }
 
-.summary-session-card__date {
-  font-size: 0.82rem;
+.course-summary-table__grid th,
+.course-summary-table__grid td {
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  border-right: 1px solid rgba(15, 23, 42, 0.05);
+  vertical-align: top;
+  background: #fff;
+}
+
+.course-summary-table__grid th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: #f8fafc;
+}
+
+.course-summary-table__student-header,
+.course-summary-table__student-cell {
+  position: sticky;
+  left: 0;
+  z-index: 4;
+  min-width: 180px;
+  max-width: 180px;
+  background: #fffdf8;
+}
+
+.course-summary-table__student-header,
+.course-summary-table__session-header,
+.course-summary-table__total-header {
+  padding: 10px 8px;
+  font-size: 0.76rem;
   font-weight: 800;
-  color: #1f3c5a;
+  color: #526173;
 }
 
-.summary-attendance {
-  padding: 4px 8px;
+.course-summary-table__session-header {
+  min-width: 110px;
+  max-width: 110px;
+  text-align: center;
+}
+
+.course-summary-table__session-date {
+  font-weight: 800;
+  color: #16324f;
+}
+
+.course-summary-table__session-meta {
+  margin-top: 2px;
+  font-size: 0.68rem;
+  color: #7b8794;
+}
+
+.course-summary-table__student-cell {
+  padding: 10px 10px 12px;
+}
+
+.course-summary-table__student-name {
+  font-size: 0.84rem;
+  font-weight: 800;
+  line-height: 1.15;
+  color: #16324f;
+}
+
+.course-summary-table__student-code {
+  margin-top: 4px;
+  font-size: 0.72rem;
+  color: #7b8794;
+}
+
+.course-summary-table__session-cell {
+  min-width: 110px;
+  max-width: 110px;
+  padding: 8px 6px 10px;
+}
+
+.course-summary-table__attendance {
+  width: fit-content;
+  margin: 0 auto 8px;
+  padding: 3px 8px;
   border-radius: 999px;
   font-size: 0.68rem;
-  font-weight: 700;
+  font-weight: 800;
 }
 
-.summary-attendance--present {
+.course-summary-table__attendance--present {
   background: #e7f8ee;
   color: #15803d;
 }
 
-.summary-attendance--absent {
+.course-summary-table__attendance--absent {
   background: #feecec;
   color: #dc2626;
 }
 
-.summary-attendance--justified {
+.course-summary-table__attendance--justified {
   background: #e8f2ff;
   color: #2563eb;
 }
 
-.summary-attendance--pending {
+.course-summary-table__attendance--pending {
   background: #f1f5f9;
   color: #64748b;
 }
 
-.summary-activity-list {
+.course-summary-table__activities {
   display: grid;
-  gap: 6px;
+  gap: 4px;
 }
 
-.summary-activity-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  font-size: 0.77rem;
+.course-summary-table__activity {
+  display: grid;
+  gap: 2px;
+  padding: 5px 6px;
+  border-radius: 10px;
+  background: #faf7ef;
 }
 
-.summary-activity-row__title {
-  color: #475569;
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+.course-summary-table__activity-title {
+  font-size: 0.64rem;
+  line-height: 1.1;
+  color: #6b7280;
 }
 
-.summary-activity-row__value {
+.course-summary-table__activity-value {
+  font-size: 0.78rem;
   font-weight: 800;
-  color: #0f172a;
-  white-space: nowrap;
+  color: #111827;
+}
+
+.course-summary-table__total-header,
+.course-summary-table__total-cell {
+  min-width: 84px;
+  max-width: 84px;
+}
+
+.course-summary-table__total-cell {
+  padding: 8px 6px;
+}
+
+.course-summary-table__total {
+  margin-bottom: 4px;
+  padding: 4px 6px;
+  border-radius: 999px;
+  text-align: center;
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.course-summary-table__total--present {
+  background: #e7f8ee;
+  color: #15803d;
+}
+
+.course-summary-table__total--absent {
+  background: #feecec;
+  color: #dc2626;
+}
+
+.course-summary-table__total--justified {
+  background: #e8f2ff;
+  color: #2563eb;
 }
 </style>
