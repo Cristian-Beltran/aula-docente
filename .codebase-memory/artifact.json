@@ -1,11 +1,11 @@
 {
     "schema_version": 1,
-    "commit": "5b5606e7b32322173df6579e748f94fc7b116858",
-    "indexed_at": "2026-08-18T15:13:04Z",
+    "commit": "0d3207217c519d42af3d1e955a94490f447caa4e",
+    "indexed_at": "2026-08-26T21:25:20Z",
     "project": "home-cristian-software-nicole-aula-docente",
-    "nodes": 1548,
-    "edges": 3733,
-    "original_size": 3014656,
-    "compressed_size": 224692,
-    "compression_level": 9
+    "nodes": 1723,
+    "edges": 4167,
+    "original_size": 6684672,
+    "compressed_size": 938783,
+    "compression_level": 3
 }

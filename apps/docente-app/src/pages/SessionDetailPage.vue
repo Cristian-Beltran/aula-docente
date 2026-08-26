@@ -124,33 +124,6 @@
         <q-card-section>
           <div class="app-page-head q-mb-sm">
             <div>
-              <h2 class="app-page-title" style="font-size:1.05rem;">Lista de asistencia</h2>
-              <p class="app-page-subtitle">{{ rosterItems.length }} estudiantes esperados</p>
-            </div>
-          </div>
-
-          <q-list separator>
-            <q-item v-for="item in rosterItems" :key="item.enrollmentId">
-              <q-item-section>
-                <q-item-label>{{ item.fullName }}</q-item-label>
-                <q-item-label caption>{{ item.studentCode }}</q-item-label>
-              </q-item-section>
-              <q-item-section side>
-                <StatusChip :status="item.status || 'PENDING'" />
-              </q-item-section>
-            </q-item>
-          </q-list>
-
-          <div v-if="rosterItems.length === 0 && !loading" class="app-empty q-py-md">
-            <div class="text-caption text-grey-7">No hay estudiantes en esta sesión.</div>
-          </div>
-        </q-card-section>
-      </q-card>
-
-      <q-card class="app-surface">
-        <q-card-section>
-          <div class="app-page-head q-mb-sm">
-            <div>
               <h2 class="app-page-title" style="font-size:1.05rem;">Actividades</h2>
               <p class="app-page-subtitle">Evaluaciones y firmas de esta clase</p>
             </div>
@@ -185,49 +158,17 @@
         <q-card-section>
           <div class="app-page-head q-mb-sm">
             <div>
-              <h2 class="app-page-title" style="font-size:1.05rem;">Resumen por estudiante</h2>
-              <p class="app-page-subtitle">Asistencia y resultados de actividades en una sola vista</p>
+              <h2 class="app-page-title" style="font-size:1.05rem;">Estudiantes y notas</h2>
+              <p class="app-page-subtitle">{{ rosterItems.length }} estudiantes en una sola tabla fija y compacta</p>
             </div>
           </div>
 
-          <div v-if="activityBoard.length > 0" class="session-board">
-            <table class="session-board__table">
-              <thead>
-                <tr>
-                  <th>Estudiante</th>
-                  <th>Asistencia</th>
-                  <th v-for="activity in activities" :key="activity.id">{{ activity.title }}</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="row in activityBoard" :key="row.enrollmentId">
-                  <td>
-                    <div class="text-weight-medium">{{ row.fullName }}</div>
-                    <div class="text-caption text-grey-7">{{ row.studentCode }}</div>
-                  </td>
-                  <td>{{ formatAttendance(row.attendanceStatus) }}</td>
-                  <td v-for="cell in row.activities" :key="cell.activityId">
-                    <div class="session-board__cell">
-                      <span>{{ formatActivityValue(cell.gradingMode, cell.value) }}</span>
-                      <q-btn
-                        flat
-                        round
-                        dense
-                        size="sm"
-                        color="primary"
-                        icon="edit"
-                        @click="promptEditActivityResult(row, cell)"
-                      />
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <div v-else class="app-empty q-py-md">
-            <div class="text-caption text-grey-7">Todavía no hay actividades para resumir.</div>
-          </div>
+          <SessionActivityBoard
+            :activities="activities"
+            :rows="activityBoard"
+            empty-text="Todavía no hay actividades para resumir."
+            @edit-result="promptEditActivityResult"
+          />
         </q-card-section>
       </q-card>
 
@@ -269,9 +210,10 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useQuasar } from 'quasar';
-import type { Activity, AttendanceStatus, WorkflowRosterItem, WorkflowSessionBoardRow } from 'src/services/types';
+import type { Activity, WorkflowRosterItem, WorkflowSessionBoardRow } from 'src/services/types';
 import { teacherWorkflowService } from 'src/services/teacher-workflow.service';
 import { useTeacherWorkflowStore } from 'stores/teacher-workflow';
+import SessionActivityBoard from 'components/SessionActivityBoard.vue';
 import StatusChip from 'components/StatusChip.vue';
 import { formatSessionDate, formatSessionTime } from 'src/utils/session-datetime';
 
@@ -381,24 +323,6 @@ async function improveSessionLog() {
   } finally {
     improvingLog.value = false;
   }
-}
-
-function formatAttendance(status: AttendanceStatus | null) {
-  if (!status) return 'Pendiente';
-  return {
-    PRESENT: 'Asistió',
-    LATE: 'Tarde',
-    ABSENT: 'Faltó',
-    JUSTIFIED: 'Justificada',
-    EARLY_LEAVE: 'Salió antes',
-  }[status] || status;
-}
-
-function formatActivityValue(gradingMode: string, value: number | null) {
-  if (gradingMode === 'SIGNATURES') {
-    return value ? `${value} firmas` : '0 firmas';
-  }
-  return value === null ? 'Sin nota' : value.toFixed(0);
 }
 
 function promptEditActivityResult(row: WorkflowSessionBoardRow, cell: WorkflowSessionBoardRow['activities'][number]) {
@@ -579,38 +503,3 @@ onMounted(() => {
   void load();
 });
 </script>
-
-<style scoped>
-.session-board {
-  overflow-x: auto;
-}
-
-.session-board__table {
-  width: 100%;
-  min-width: 520px;
-  border-collapse: collapse;
-}
-
-.session-board__table th,
-.session-board__table td {
-  padding: 10px 12px;
-  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
-  text-align: left;
-  vertical-align: top;
-}
-
-.session-board__table th {
-  font-size: 0.78rem;
-  color: #5b6472;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.session-board__cell {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-  min-width: 118px;
-}
-</style>
