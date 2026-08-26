@@ -38,6 +38,7 @@
               <table class="course-summary-table__grid">
                 <thead>
                   <tr>
+                    <th class="course-summary-table__total-header">Resumen</th>
                     <th class="course-summary-table__student-header">Estudiante</th>
                     <th
                       v-for="session in summary.sessions"
@@ -47,14 +48,23 @@
                       <div class="course-summary-table__session-date">{{ formatShortDate(session.sessionDate) }}</div>
                       <div class="course-summary-table__session-meta">P{{ session.partialNumber }}</div>
                     </th>
-                    <th class="course-summary-table__total-header">Totales</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr v-for="student in summary.students" :key="student.enrollmentId">
+                    <td class="course-summary-table__total-cell">
+                      <div class="course-summary-table__total course-summary-table__total--present">{{ student.totals.present }} P</div>
+                      <div class="course-summary-table__total course-summary-table__total--absent">{{ student.totals.absent }} A</div>
+                      <div class="course-summary-table__total course-summary-table__total--justified">{{ student.totals.justified }} J</div>
+                    </td>
                     <td class="course-summary-table__student-cell">
-                      <div class="course-summary-table__student-name">{{ student.fullName }}</div>
-                      <div class="course-summary-table__student-code">{{ student.studentCode }}</div>
+                      <div
+                        v-for="(part, index) in nameParts(student.fullName)"
+                        :key="`${student.enrollmentId}-name-${index}`"
+                        class="course-summary-table__student-name"
+                      >
+                        {{ part }}
+                      </div>
                     </td>
 
                     <td
@@ -80,12 +90,6 @@
                           </span>
                         </div>
                       </div>
-                    </td>
-
-                    <td class="course-summary-table__total-cell">
-                      <div class="course-summary-table__total course-summary-table__total--present">{{ student.totals.present }} P</div>
-                      <div class="course-summary-table__total course-summary-table__total--absent">{{ student.totals.absent }} A</div>
-                      <div class="course-summary-table__total course-summary-table__total--justified">{{ student.totals.justified }} J</div>
                     </td>
                   </tr>
                 </tbody>
@@ -113,6 +117,10 @@ const summary = ref<CourseMobileSummary | null>(null);
 
 function formatShortDate(date: string) {
   return formatSessionDate(date, 'es-BO', { day: '2-digit', month: 'short' });
+}
+
+function nameParts(fullName: string) {
+  return fullName.split(/\s+/).filter(Boolean);
 }
 
 function findStudentSession(student: CourseMobileSummaryStudent, sessionId: string) {
@@ -171,6 +179,8 @@ onMounted(() => {
 <style scoped>
 .course-summary-table {
   overflow: auto;
+  max-height: 60vh;
+  max-height: 60dvh;
   border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: 18px;
 }
@@ -198,14 +208,40 @@ onMounted(() => {
   background: #f8fafc;
 }
 
+.course-summary-table__total-header,
+.course-summary-table__total-cell {
+  position: sticky;
+  left: 0;
+  background: #f5f8ff;
+}
+
 .course-summary-table__student-header,
 .course-summary-table__student-cell {
   position: sticky;
-  left: 0;
-  z-index: 4;
-  min-width: 180px;
-  max-width: 180px;
+  left: 64px;
   background: #fffdf8;
+}
+
+.course-summary-table__total-header,
+.course-summary-table__student-header {
+  z-index: 5;
+}
+
+.course-summary-table__total-cell,
+.course-summary-table__student-cell {
+  z-index: 4;
+}
+
+.course-summary-table__total-header,
+.course-summary-table__total-cell {
+  min-width: 64px;
+  max-width: 64px;
+}
+
+.course-summary-table__student-header,
+.course-summary-table__student-cell {
+  min-width: 96px;
+  max-width: 148px;
 }
 
 .course-summary-table__student-header,
@@ -215,6 +251,12 @@ onMounted(() => {
   font-size: 0.76rem;
   font-weight: 800;
   color: #526173;
+}
+
+.course-summary-table__total-header {
+  padding: 10px 4px;
+  font-size: 0.64rem;
+  text-align: center;
 }
 
 .course-summary-table__session-header {
@@ -239,16 +281,11 @@ onMounted(() => {
 }
 
 .course-summary-table__student-name {
-  font-size: 0.84rem;
+  white-space: nowrap;
+  font-size: 0.78rem;
   font-weight: 800;
-  line-height: 1.15;
+  line-height: 1.3;
   color: #16324f;
-}
-
-.course-summary-table__student-code {
-  margin-top: 4px;
-  font-size: 0.72rem;
-  color: #7b8794;
 }
 
 .course-summary-table__session-cell {
@@ -311,22 +348,16 @@ onMounted(() => {
   color: #111827;
 }
 
-.course-summary-table__total-header,
 .course-summary-table__total-cell {
-  min-width: 84px;
-  max-width: 84px;
-}
-
-.course-summary-table__total-cell {
-  padding: 8px 6px;
+  padding: 8px 4px;
 }
 
 .course-summary-table__total {
   margin-bottom: 4px;
-  padding: 4px 6px;
+  padding: 2px 4px;
   border-radius: 999px;
   text-align: center;
-  font-size: 0.68rem;
+  font-size: 0.62rem;
   font-weight: 800;
 }
 
