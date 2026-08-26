@@ -8,8 +8,6 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { dirname, join } from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { DataSource, In, IsNull, Repository } from 'typeorm';
 import * as QRCode from 'qrcode';
 const PDFDocument = require('pdfkit');
@@ -1990,9 +1988,10 @@ export class TeacherWorkflowService {
   }
 
   private async loadOpencodeSdk() {
-    const packageJsonPath = require.resolve('@opencode-ai/sdk/package.json');
-    const sdkEntryUrl = pathToFileURL(join(dirname(packageJsonPath), 'dist', 'v2', 'index.js')).href;
-    return (await import(sdkEntryUrl)) as { createOpencode: (options?: unknown) => Promise<any> };
+    const importSdk = new Function('specifier', 'return import(specifier)') as (specifier: string) => Promise<unknown>;
+    return (await importSdk('@opencode-ai/sdk')) as {
+      createOpencode: (options?: unknown) => Promise<any>;
+    };
   }
 
   private weekdayLabelToNumber(label: string) {
