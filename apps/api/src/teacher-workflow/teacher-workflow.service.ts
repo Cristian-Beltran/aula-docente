@@ -61,7 +61,7 @@ type SessionNotesState = {
 
 @Injectable()
 export class TeacherWorkflowService {
-  private opencodeInstancePromise?: Promise<{ client: any; server: { url: string; close(): void } }>;
+  private opencodeInstancePromise: Promise<{ client: any; server: { url: string; close(): void } }> | null = null;
 
   constructor(
     private readonly configService: ConfigService,
@@ -1924,47 +1924,55 @@ export class TeacherWorkflowService {
 
   private async getOpencodeInstance() {
     if (!this.opencodeInstancePromise) {
-      const apiKey = this.configService.get<string>('OPENCODE_API_KEY', '').trim();
-      if (!apiKey) {
-        throw new ServiceUnavailableException('Falta configurar OPENCODE_API_KEY en el archivo .env');
-      }
+      this.opencodeInstancePromise = this.createOpencodeInstance();
+    }
 
-      const { providerID, modelID } = this.parseOpencodeModelSelector();
-      const baseURL = this.configService
-        .get<string>(
-          'OPENCODE_API_URL',
-          'https://console.opencode.ai/inference/openai/v1/chat/completions',
-        )
-        .trim();
+    return this.opencodeInstancePromise;
+  }
 
-      this.opencodeInstancePromise = this.loadOpencodeSdk().then(({ createOpencode }) =>
-        createOpencode({
-          hostname: this.configService.get<string>('OPENCODE_HOSTNAME', '127.0.0.1'),
-          port: Number(this.configService.get<string>('OPENCODE_PORT', '4096')),
-          timeout: Number(this.configService.get<string>('OPENCODE_TIMEOUT_MS', '15000')),
-          config: {
-            model: `${providerID}/${modelID}`,
-            provider: {
-              [providerID]: {
-                npm: '@ai-sdk/openai-compatible',
-                name: 'OpenCode Gateway',
-                options: {
-                  apiKey,
-                  baseURL,
-                },
-                models: {
-                  [modelID]: {
-                    name: modelID,
-                  },
+  private async createOpencodeInstance() {
+    const apiKey = this.configService.get<string>('OPENCODE_API_KEY', '').trim();
+    if (!apiKey) {
+      throw new ServiceUnavailableException('Falta configurar OPENCODE_API_KEY en el archivo .env');
+    }
+
+    const { providerID, modelID } = this.parseOpencodeModelSelector();
+    const baseURL = this.configService
+      .get<string>(
+        'OPENCODE_API_URL',
+        'https://console.opencode.ai/inference/openai/v1/chat/completions',
+      )
+      .trim();
+
+    try {
+      const { createOpencode } = await this.loadOpencodeSdk();
+      return await createOpencode({
+        hostname: this.configService.get<string>('OPENCODE_HOSTNAME', '127.0.0.1'),
+        port: Number(this.configService.get<string>('OPENCODE_PORT', '4096')),
+        timeout: Number(this.configService.get<string>('OPENCODE_TIMEOUT_MS', '15000')),
+        config: {
+          model: `${providerID}/${modelID}`,
+          provider: {
+            [providerID]: {
+              npm: '@ai-sdk/openai-compatible',
+              name: 'OpenCode Gateway',
+              options: {
+                apiKey,
+                baseURL,
+              },
+              models: {
+                [modelID]: {
+                  name: modelID,
                 },
               },
             },
           },
-        }),
-      );
+        },
+      });
+    } catch (error) {
+      this.opencodeInstancePromise = null;
+      throw error;
     }
-
-    return this.opencodeInstancePromise;
   }
 
   private parseOpencodeModelSelector() {
@@ -1989,9 +1997,22 @@ export class TeacherWorkflowService {
 
   private async loadOpencodeSdk() {
     const importSdk = new Function('specifier', 'return import(specifier)') as (specifier: string) => Promise<unknown>;
-    return (await importSdk('@opencode-ai/sdk')) as {
-      createOpencode: (options?: unknown) => Promise<any>;
-    };
+
+    try {
+      const mod = (await importSdk('@opencode-ai/sdk')) as {
+        createOpencode?: (options?: unknown) => Promise<any>;
+      };
+
+      if (typeof mod?.createOpencode !== 'function') {
+        throw new Error('createOpencode no está exportado por @opencode-ai/sdk');
+      }
+
+      return mod as { createOpencode: (options?: unknown) => Promise<any> };
+    } catch (error) {
+      throw new ServiceUnavailableException(
+        `No se pudo cargar el SDK de OpenCode: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
   }
 
   private weekdayLabelToNumber(label: string) {
